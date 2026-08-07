@@ -1,0 +1,6 @@
+{
+  "name": "MINGLE@MANIPAL",
+  "description": "A private dating and crush-discovery network exclusively for verified Manipal students, featuring swipe discovery, campus pass, secret crushes, and admin verification dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -90,6 +90,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
         {/* Brand Title & Typography */}
         <div className="mb-4 space-y-2">
+          <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FF4B5C] to-[#FF9FFC] tracking-widest uppercase pb-2 drop-shadow-md">
+            MINGLE@MANIPAL
+          </h1>
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             <span className="inline-block px-3 py-1 rounded-full bg-[#6C4AB6]/20 border border-[#6C4AB6]/40 text-[#d1bcff] text-xs font-semibold tracking-wider uppercase">
               EXCLUSIVELY FOR MANIPAL STUDENTS

@@ -328,7 +328,7 @@ export default function App() {
         COLOR_UPDATE_SPEED={10}
         SHADING
         RAINBOW_MODE={false}
-        COLOR="#A855F7"
+        COLOR="#FF4B5C"
       />
 
       <div className="relative z-10 flex flex-col min-h-screen">

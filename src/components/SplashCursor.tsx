@@ -910,10 +910,11 @@ function SplashCursor({
     }
 
     function generateColor() {
-      if (!config.RAINBOW_MODE) {
-        return hexToRGB(config.COLOR);
-      }
-      let c = HSVtoRGB(Math.random(), 1.0, 1.0);
+      // Love theme: Hues between 0.85 (purple/pink) and 1.0 (red)
+      let h = 0.85 + Math.random() * 0.15;
+      let s = 0.8 + Math.random() * 0.2; // High saturation
+      let v = 0.9 + Math.random() * 0.1; // High brightness
+      let c = HSVtoRGB(h, s, v);
       c.r *= 0.15;
       c.g *= 0.15;
       c.b *= 0.15;

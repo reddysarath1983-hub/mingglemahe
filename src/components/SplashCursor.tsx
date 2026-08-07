@@ -154,7 +154,7 @@ function SplashCursor({
       fragmentShaderSource: any;
       programs: any[];
       activeProgram: any;
-      uniforms: any[];
+      uniforms: any;
 
       constructor(vertexShader: any, fragmentShaderSource: any) {
         this.vertexShader = vertexShader;

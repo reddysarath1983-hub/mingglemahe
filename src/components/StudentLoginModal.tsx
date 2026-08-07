@@ -15,7 +15,7 @@ export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
     studentId: 'std-8812',
     studentName: 'Anya Sharma',
     studentEmail: 'anya.sharma@manipal.edu',
-    studentRegNo: '220911048',
+    studentPhoneNumber: '220911048',
     loginId: 'MPL-2026-8812',
     passcode: 'Manipal#2026',
     status: 'Approved',
@@ -27,7 +27,7 @@ export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
     studentId: 'std-9923',
     studentName: 'Kabir Mehta',
     studentEmail: 'kabir.mehta@manipal.edu',
-    studentRegNo: '220911099',
+    studentPhoneNumber: '220911099',
     loginId: 'MPL-2026-9923',
     passcode: 'Campus#3000',
     status: 'Approved',
@@ -57,7 +57,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
       const matchIdOrName =
         cred.loginId.trim().toLowerCase() === loginInput.trim().toLowerCase() ||
         cred.studentName.trim().toLowerCase() === loginInput.trim().toLowerCase() ||
-        cred.studentRegNo.trim() === loginInput.trim();
+        cred.studentPhoneNumber.trim() === loginInput.trim();
 
       const matchPass = cred.passcode.trim() === passcode.trim();
       return matchIdOrName && matchPass;

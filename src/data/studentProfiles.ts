@@ -172,7 +172,7 @@ export const INITIAL_ADMIN_ACTIVITIES: AdminActivity[] = [
       transactionRef: 'UTR9821445102',
       amount: '₹6.69',
       screenshotUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrC4sHbzo6C8GU6kzAHH5_XaVLYHFolZUdoNiRZ52meDdEX_OTYwQ1en5Exy7Cb0qONxVydztbVKlzg1rjDrtj30VXqNchPUBYG99yfZAOM95AQItwPZCD27D_BhHJLowsZrxwLckz2FNuB4ZbLELJMGXrJt0TcTPL7srONNllhixh1A2OrbqAomwdZ5IeoVk6zKKH706ywAtgQ5cT5A2PaJAZdH7xg4YPUwhbjbMKs7LgoMvOXKUR',
-      studentRegNo: '220911048'
+      studentPhoneNumber: '220911048'
     }
   },
   {
@@ -187,7 +187,7 @@ export const INITIAL_ADMIN_ACTIVITIES: AdminActivity[] = [
       transactionRef: 'UTR8192039120',
       amount: '₹6.69',
       screenshotUrl: ASSETS.aanyaPhoto,
-      studentRegNo: '210811092'
+      studentPhoneNumber: '210811092'
     }
   },
   {
@@ -218,7 +218,7 @@ export const INITIAL_ADMIN_ACTIVITIES: AdminActivity[] = [
       transactionRef: 'UTR7719203910',
       amount: '₹6.69',
       screenshotUrl: ASSETS.userAvatar,
-      studentRegNo: '200711011'
+      studentPhoneNumber: '200711011'
     }
   }
 ];

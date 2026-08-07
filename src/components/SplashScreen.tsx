@@ -3,7 +3,7 @@ import { ASSETS } from '../data/studentProfiles';
 import { SecretHumansIntro } from './SecretHumansIntro';
 import { CampusPreviewsModal } from './CampusPreviewsModal';
 import { StudentProfile } from '../types';
-import Ferrofluid from './Ferrofluid';
+import ColorBends from './ColorBends';
 import DepthText from './DepthText';
 
 interface SplashScreenProps {
@@ -32,21 +32,21 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <div className="bg-[#1e0f10] text-[#f9dcdb] min-h-screen flex flex-col relative overflow-hidden font-sans antialiased selection:bg-[#ff5260] selection:text-[#5b0011]">
       <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
-        <Ferrofluid
-          colors={["#FF4B5C", "#FFD1DC", "#FF9FFC"]}
-          speed={0.1}
-          scale={1.6}
-          turbulence={1}
-          fluidity={0.1}
-          rimWidth={0.2}
-          sharpness={2.5}
-          shimmer={1.5}
-          glow={2}
-          flowDirection="down"
-          opacity={1}
-          mouseInteraction={true}
-          mouseStrength={1}
-          mouseRadius={0.35}
+        <ColorBends
+          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
+          rotation={90}
+          speed={0.2}
+          scale={1}
+          frequency={1}
+          warpStrength={1}
+          mouseInfluence={1}
+          noise={0.15}
+          parallax={0.5}
+          iterations={1}
+          intensity={1.5}
+          bandWidth={6}
+          transparent={true}
+          autoRotate={0}
         />
       </div>
 

@@ -4,6 +4,7 @@ import { SecretHumansIntro } from './SecretHumansIntro';
 import { CampusPreviewsModal } from './CampusPreviewsModal';
 import { StudentProfile } from '../types';
 import Ferrofluid from './Ferrofluid';
+import DepthText from './DepthText';
 
 interface SplashScreenProps {
   onContinueWithGoogle: () => void;
@@ -98,9 +99,27 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               <span>FRESHER OFFER ₹6.69</span>
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#f9dcdb] leading-tight tracking-tight">
-            Someone on campus might already like you.
-          </h1>
+          <div className="flex flex-col items-center justify-center w-full my-4">
+            <DepthText
+              text="Secret Crushes"
+              layers={12}
+              depth={1.5}
+              faceColor="#f9dcdb"
+              depthColor="#FF4B5C"
+              tilt={5}
+              pointerTracking={true}
+              smoothing={0.15}
+              perspective={800}
+              autoOrbit={true}
+              orbitSpeed={0.2}
+              fontSize="clamp(2rem, 8vw, 3.5rem)"
+              fontWeight={900}
+              shadow={true}
+            />
+            <h2 className="text-sm sm:text-base font-bold text-[#e3bebd] mt-2">
+              Someone on campus might already like you.
+            </h2>
+          </div>
           <p className="text-xs sm:text-sm text-[#e3bebd]/90 max-w-[320px] mx-auto font-normal leading-relaxed">
             A private dating and secret crush discovery network strictly for verified Manipal students.
           </p>

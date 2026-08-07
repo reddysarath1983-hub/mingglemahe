@@ -1,0 +1,30 @@
+.depth-text {
+  display: inline-block;
+  perspective: var(--depth-text-perspective);
+  font-size: var(--depth-text-font-size);
+  font-weight: var(--depth-text-font-weight);
+}
+
+.depth-text__stage {
+  position: relative;
+  display: inline-block;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.depth-text__layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.depth-text__face {
+  position: relative;
+  display: inline-block;
+  color: var(--depth-text-face-color);
+  text-shadow: var(--depth-text-shadow);
+  transform: translateZ(1px);
+  white-space: nowrap;
+}

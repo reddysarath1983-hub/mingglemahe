@@ -298,23 +298,26 @@ export default function App() {
   return (
     <div className="bg-[#1e0f10] text-[#f9dcdb] min-h-screen flex flex-col font-sans antialiased selection:bg-[#ff5260] selection:text-[#5b0011] relative overflow-x-hidden">
       {/* Dynamic Molten Metal Ambient Background Layer */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-45">
+      <div className="fixed inset-0 pointer-events-none z-0">
         <MoltenMetal
-          color1="#FF4B5C"
-          color2="#6C4AB6"
-          color3="#FFD1DC"
-          speed={0.25}
-          scale={3.5}
+          color1="#5227FF"
+          color2="#FF9FFC"
+          color3="#FFFFFF"
+          speed={0.35}
+          scale={4}
           detail={3}
-          glow={1.8}
-          coreSize={0.12}
-          swirl={1.2}
-          fold={-0.25}
-          blackPoint={0.08}
-          brightness={1.2}
+          glow={1.6}
+          coreSize={0.1}
+          swirl={1}
+          fold={-0.2}
+          blackPoint={0.05}
+          brightness={1.3}
+          colorMode="molten"
           grain={true}
-          grainIntensity={0.04}
-          opacity={0.8}
+          grainIntensity={0.05}
+          mouseInteraction={true}
+          mouseStrength={0.3}
+          opacity={1}
         />
       </div>
 

@@ -53,10 +53,10 @@ export const IntroVideoOverlay: React.FC<IntroVideoOverlayProps> = ({ onFinish }
       />
       
       {!isPlaying && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center">
-            <span className="material-symbols-outlined text-6xl text-white mb-4 animate-pulse">play_circle</span>
-            <span className="text-white font-bold tracking-widest uppercase">Tap to Play Audio</span>
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <div className="flex items-center gap-2 px-6 py-3 bg-black/60 backdrop-blur-md rounded-full border border-white/20 shadow-2xl">
+            <span className="material-symbols-outlined text-3xl text-white animate-pulse">play_circle</span>
+            <span className="text-white font-bold tracking-widest uppercase text-xs">Tap to Play</span>
           </div>
         </div>
       )}

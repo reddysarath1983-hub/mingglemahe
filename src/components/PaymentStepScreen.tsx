@@ -21,7 +21,7 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
   onBackToDetails,
 }) => {
   const [upiId] = useState('mingle.manipal@okaxis');
-  const [phonePeNumber] = useState('+91 98765 43210');
+  const [phonePeNumber] = useState('7676878700');
   const [copied, setCopied] = useState(false);
 
   const [transactionRef, setTransactionRef] = useState('');

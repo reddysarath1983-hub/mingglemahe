@@ -78,6 +78,7 @@ export const DiscoverScreen: React.FC<DiscoverScreenProps> = ({
   }
 
   return (
+    <div className="flex-1 flex flex-col items-center justify-center relative w-full h-full max-w-sm mx-auto">
       <button 
         onClick={() => setShowFreshersMode(!showFreshersMode)}
         className="absolute top-4 left-4 z-40 bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white px-4 py-2 rounded-full font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all"
@@ -260,4 +261,4 @@ export const DiscoverScreen: React.FC<DiscoverScreenProps> = ({
       )}
     </div>
   );
-};};
+};

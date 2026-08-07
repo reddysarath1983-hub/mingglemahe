@@ -33,7 +33,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
         <Ferrofluid
           colors={["#FF4B5C", "#FFD1DC", "#FF9FFC"]}
-          speed={0.5}
+          speed={0.1}
           scale={1.6}
           turbulence={1}
           fluidity={0.1}

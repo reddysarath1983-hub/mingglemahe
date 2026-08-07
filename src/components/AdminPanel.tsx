@@ -302,8 +302,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           />
                           <div>
                             <span className="text-sm font-semibold text-[#f9dcdb] block">{item.userName}</span>
-                            {item.paymentDetails?.studentRegNo && (
-                              <span className="text-[10px] text-[#e3bebd]/80 font-mono">Reg: {item.paymentDetails.studentRegNo}</span>
+                            {item.paymentDetails?.studentPhoneNumber && (
+                              <span className="text-[10px] text-[#e3bebd]/80 font-mono">Phone: {item.paymentDetails.studentPhoneNumber}</span>
                             )}
                           </div>
                         </div>
@@ -395,10 +395,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span>UTR / Ref ID:</span>
                     <span className="text-[#d1bcff] font-bold">{selectedReviewItem.paymentDetails.transactionRef}</span>
                   </p>
-                  {selectedReviewItem.paymentDetails.studentRegNo && (
+                  {selectedReviewItem.paymentDetails.studentPhoneNumber && (
                     <p className="text-[#e3bebd] flex justify-between font-mono">
-                      <span>Student Reg No:</span>
-                      <span className="text-white font-bold">{selectedReviewItem.paymentDetails.studentRegNo}</span>
+                      <span>Phone Number:</span>
+                      <span className="text-white font-bold">{selectedReviewItem.paymentDetails.studentPhoneNumber}</span>
                     </p>
                   )}
                 </div>

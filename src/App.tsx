@@ -29,7 +29,7 @@ import { AdminPasscodeModal } from './components/AdminPasscodeModal';
 import { StudentLoginModal } from './components/StudentLoginModal';
 import { MoltenMetal } from './components/MoltenMetal';
 import { IntroVideoOverlay } from './components/IntroVideoOverlay';
-import { BottomNav } from './components/BottomNav';
+import { SideNav } from './components/SideNav';
 import SplashCursor from './components/SplashCursor';
 
 export default function App() {
@@ -52,7 +52,7 @@ export default function App() {
   // Student Onboarding details state
   const [userOnboardingData, setUserOnboardingData] = useState<{
     fullName: string;
-    regNumber: string;
+    phoneNumber: string;
     email: string;
     major: string;
     year: string;
@@ -63,7 +63,7 @@ export default function App() {
     avatarUrl: string;
   }>({
     fullName: 'Alex Sharma',
-    regNumber: '220911048',
+    phoneNumber: '9876543210',
     email: 'alex.sharma@manipal.edu',
     major: 'B.Tech Mechanical',
     year: '3rd Year',
@@ -82,7 +82,7 @@ export default function App() {
       studentId: 'user-sample',
       studentName: 'Alex Sharma',
       studentEmail: 'alex.sharma@manipal.edu',
-      studentRegNo: '220911048',
+      studentPhoneNumber: '9876543210',
       loginId: 'MPL-2026-8812',
       passcode: 'Campus#8812',
       status: 'Approved',
@@ -99,7 +99,7 @@ export default function App() {
     const newActivity: AdminActivity = {
       id: `act-${Date.now()}`,
       userName: details.fullName,
-      action: `New Student Logged In (${details.major} • Reg: ${details.regNumber})`,
+      action: `New Student Logged In (${details.major} • Phone: ${details.phoneNumber})`,
       status: 'Completed',
       time: 'Just now',
       avatarUrl: details.avatarUrl,
@@ -134,7 +134,7 @@ export default function App() {
         transactionRef: paymentData.transactionRef,
         amount: paymentData.amount,
         screenshotUrl: paymentData.screenshotUrl,
-        studentRegNo: userOnboardingData.regNumber,
+        studentPhoneNumber: userOnboardingData.phoneNumber,
         studentEmail: userOnboardingData.email,
       },
     };
@@ -156,7 +156,7 @@ export default function App() {
   ) => {
     const act = adminActivities.find((a) => a.id === activityId);
     const studentName = act?.userName || userOnboardingData.fullName;
-    const studentRegNo = act?.paymentDetails?.studentRegNo || userOnboardingData.regNumber;
+    const studentPhoneNumber = act?.paymentDetails?.studentPhoneNumber || userOnboardingData.phoneNumber;
     const utrRef = act?.paymentDetails?.transactionRef;
 
     const newCredential: ApprovedCredential = {
@@ -166,7 +166,7 @@ export default function App() {
       studentEmail:
         act?.paymentDetails?.studentEmail ||
         `${studentName.toLowerCase().replace(/\s+/g, '.')}@manipal.edu`,
-      studentRegNo,
+      studentPhoneNumber,
       loginId: credential.loginId,
       passcode: credential.passcode,
       status: 'Approved',
@@ -176,7 +176,7 @@ export default function App() {
 
     setApprovedCredentials((prev) => [
       newCredential,
-      ...prev.filter((c) => c.studentRegNo !== studentRegNo),
+      ...prev.filter((c) => c.studentPhoneNumber !== studentPhoneNumber),
     ]);
 
     setAdminActivities((prev) =>
@@ -375,7 +375,7 @@ export default function App() {
       {currentView === 'payment-step' && (
         <PaymentStepScreen
           studentName={userOnboardingData.fullName}
-          regNumber={userOnboardingData.regNumber}
+          phoneNumber={userOnboardingData.phoneNumber}
           email={userOnboardingData.email}
           onCompletePayment={handlePaymentSubmit}
           onBackToDetails={() => setCurrentView('onboarding-details')}
@@ -385,7 +385,7 @@ export default function App() {
       {currentView === 'awaiting-approval' && (
         <AwaitingApprovalScreen
           studentName={userOnboardingData.fullName}
-          regNumber={userOnboardingData.regNumber}
+          regNumber={userOnboardingData.phoneNumber}
           transactionRef={
             adminActivities.find((a) => a.userName === userOnboardingData.fullName)?.paymentDetails
               ?.transactionRef || ''
@@ -451,8 +451,8 @@ export default function App() {
         />
       )}
 
-      {/* Bottom Floating Glass Navigation Bar */}
-      <BottomNav
+      {/* Side Floating Glass Navigation Bar */}
+      <SideNav
         currentView={currentView}
         setCurrentView={setCurrentView}
         unreadMessagesCount={totalUnreadCount}
@@ -542,7 +542,7 @@ export default function App() {
             setUserOnboardingData((prev) => ({
               ...prev,
               fullName: cred.name,
-              regNumber: cred.loginId,
+              phoneNumber: cred.loginId,
             }));
             setShowStudentLoginModal(false);
             setCurrentView('discover');

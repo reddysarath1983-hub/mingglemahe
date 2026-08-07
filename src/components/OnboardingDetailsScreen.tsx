@@ -4,7 +4,7 @@ import { ASSETS } from '../data/studentProfiles';
 interface OnboardingDetailsScreenProps {
   onSubmitDetails: (details: {
     fullName: string;
-    regNumber: string;
+    phoneNumber: string;
     email: string;
     major: string;
     year: string;
@@ -22,7 +22,7 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
   onBackToSplash,
 }) => {
   const [fullName, setFullName] = useState('');
-  const [regNumber, setRegNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('student@manipal.edu');
   const [major, setMajor] = useState('B.Tech Computer Science');
   const [year, setYear] = useState('2nd Year');
@@ -52,14 +52,14 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !regNumber.trim()) {
-      alert('Please fill in your Full Name and Student Registration Number.');
+    if (!fullName.trim() || !phoneNumber.trim()) {
+      alert('Please fill in your Full Name and Phone Number.');
       return;
     }
 
     onSubmitDetails({
       fullName,
-      regNumber,
+      phoneNumber,
       email,
       major,
       year,
@@ -124,13 +124,13 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Student Reg No *</label>
+                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Phone Number *</label>
                 <input
-                  type="text"
+                  type="tel"
                   required
-                  placeholder="e.g. 220911048"
-                  value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value)}
+                  placeholder="e.g. 9876543210"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-[#aa8988] focus:outline-none focus:border-[#FF4B5C]"
                 />
               </div>

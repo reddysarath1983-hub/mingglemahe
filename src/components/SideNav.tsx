@@ -1,13 +1,13 @@
 import React from 'react';
 import { ViewScreen } from '../types';
 
-interface BottomNavProps {
+interface SideNavProps {
   currentView: ViewScreen;
   setCurrentView: (view: ViewScreen) => void;
   unreadMessagesCount: number;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({
+export const SideNav: React.FC<SideNavProps> = ({
   currentView,
   setCurrentView,
   unreadMessagesCount,
@@ -17,8 +17,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   }
 
   return (
-    <nav className="fixed bottom-4 left-0 right-0 z-40 flex justify-center items-center px-4 pointer-events-none">
-      <div className="w-full max-w-md rounded-full bg-black/40 backdrop-blur-xl border border-white/15 shadow-2xl flex justify-around items-center px-4 py-2.5 pointer-events-auto">
+    <nav className="fixed top-0 bottom-0 left-4 sm:left-6 md:left-8 z-40 flex flex-col justify-center items-center py-4 pointer-events-none">
+      <div className="w-16 sm:w-[72px] h-[60vh] min-h-[350px] max-h-[500px] rounded-full bg-black/40 backdrop-blur-xl border border-white/15 shadow-2xl flex flex-col justify-around items-center py-6 px-2 pointer-events-auto">
         {/* Discover / Swipe */}
         <button
           onClick={() => setCurrentView('discover')}

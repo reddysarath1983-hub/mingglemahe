@@ -140,8 +140,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             onClick={onContinueWithGoogle}
             className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white font-bold text-xs sm:text-sm tracking-wide shadow-xl shadow-[#FF4B5C]/25 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase cursor-pointer"
           >
-            <span className="material-symbols-outlined text-xl">login</span>
-            <span>[ CONTINUE WITH GOOGLE ]</span>
+            <span className="material-symbols-outlined text-xl">app_registration</span>
+            <span>[ REGISTER HERE ]</span>
           </button>
 
           {onOpenStudentLogin && (

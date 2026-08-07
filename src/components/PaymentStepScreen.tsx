@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 interface PaymentStepScreenProps {
   studentName: string;
-  regNumber: string;
+  phoneNumber: string;
   email: string;
   onCompletePayment: (paymentData: {
     upiNumber: string;
@@ -15,7 +15,7 @@ interface PaymentStepScreenProps {
 
 export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
   studentName,
-  regNumber,
+  phoneNumber,
   email,
   onCompletePayment,
   onBackToDetails,
@@ -111,7 +111,7 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
           <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center text-xs">
             <div>
               <p className="font-bold text-white">{studentName}</p>
-              <p className="text-[11px] text-[#e3bebd] font-mono">Reg No: {regNumber || '220911048'}</p>
+              <p className="text-[11px] text-[#e3bebd] font-mono">Phone: {phoneNumber || 'Not provided'}</p>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-[#5edda8]/20 text-[#5edda8] border border-[#5edda8]/40 text-[10px] font-black">
               FRESHER OFFER: ₹6.69

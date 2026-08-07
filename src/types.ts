@@ -15,7 +15,7 @@ export interface StudentProfile {
   coffeeSpot?: string;
   distance?: string;
   isOnline?: boolean;
-  regNumber?: string;
+  phoneNumber?: string;
   email?: string;
 }
 
@@ -24,7 +24,7 @@ export interface PaymentSubmission {
   studentId: string;
   studentName: string;
   studentEmail: string;
-  studentRegNo: string;
+  studentPhoneNumber: string;
   amount: string;
   upiNumber: string;
   transactionRef: string;
@@ -81,7 +81,7 @@ export interface ApprovedCredential {
   studentId: string;
   studentName: string;
   studentEmail: string;
-  studentRegNo: string;
+  studentPhoneNumber: string;
   loginId: string;
   passcode: string;
   status: 'Pending' | 'Approved' | 'Rejected';
@@ -101,7 +101,7 @@ export interface AdminActivity {
     transactionRef: string;
     amount: string;
     screenshotUrl: string;
-    studentRegNo: string;
+    studentPhoneNumber: string;
     studentEmail?: string;
   };
   assignedCredential?: {

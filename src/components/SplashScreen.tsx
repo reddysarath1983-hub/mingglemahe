@@ -3,7 +3,7 @@ import { ASSETS } from '../data/studentProfiles';
 import { SecretHumansIntro } from './SecretHumansIntro';
 import { CampusPreviewsModal } from './CampusPreviewsModal';
 import { StudentProfile } from '../types';
-import ColorBends from './ColorBends';
+import Hyperspeed, { hyperspeedPresets } from './Hyperspeed';
 import DepthText from './DepthText';
 
 interface SplashScreenProps {
@@ -32,22 +32,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <div className="bg-[#1e0f10] text-[#f9dcdb] min-h-screen flex flex-col relative overflow-hidden font-sans antialiased selection:bg-[#ff5260] selection:text-[#5b0011]">
       <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
-        <ColorBends
-          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
-          rotation={90}
-          speed={0.2}
-          scale={1}
-          frequency={1}
-          warpStrength={1}
-          mouseInfluence={1}
-          noise={0.15}
-          parallax={0.5}
-          iterations={1}
-          intensity={1.5}
-          bandWidth={6}
-          transparent={true}
-          autoRotate={0}
-        />
+        <Hyperspeed effectOptions={hyperspeedPresets.four} />
       </div>
 
       {/* Top Right Header Buttons */}

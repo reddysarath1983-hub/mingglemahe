@@ -297,7 +297,7 @@ export default function ColorBends({
 
   useEffect(() => {
     const material = materialRef.current;
-    const container = containerRef.current;
+    const container = containerRef.current as HTMLDivElement;
     if (!material || !container) return;
 
     const handlePointerMove = (e: any) => {

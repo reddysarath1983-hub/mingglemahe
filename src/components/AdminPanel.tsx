@@ -37,9 +37,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     if (!db) return;
-    const q = query(collection(db, "pending_registrations"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pending_registrations"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fbActivities: AdminActivity[] = snapshot.docs.map(docSnap => {
+      const fbActivities: AdminActivity[] = snapshot.docs
+        .sort((a, b) => {
+          const timeA = a.data().createdAt?.toMillis?.() || a.data().createdAt || 0;
+          const timeB = b.data().createdAt?.toMillis?.() || b.data().createdAt || 0;
+          return timeB - timeA;
+        })
+        .map(docSnap => {
         const data = docSnap.data();
         return {
           id: docSnap.id,

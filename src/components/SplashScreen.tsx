@@ -3,7 +3,7 @@ import { ASSETS } from '../data/studentProfiles';
 import { SecretHumansIntro } from './SecretHumansIntro';
 import { CampusPreviewsModal } from './CampusPreviewsModal';
 import { StudentProfile } from '../types';
-import Strands from './Strands';
+import Scanner from './Scanner';
 import DepthText from './DepthText';
 
 interface SplashScreenProps {
@@ -32,25 +32,33 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <div className="bg-[#1e0f10] text-[#f9dcdb] min-h-screen flex flex-col relative overflow-hidden font-sans antialiased selection:bg-[#ff5260] selection:text-[#5b0011]">
       <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
-        <Strands
-          colors={["#F97316","#7C3AED","#06B6D4"]}
-          count={3}
+        <Scanner
+          color1="#5227FF"
+          color2="#FF9FFC"
+          color3="#FFFFFF"
           speed={0.5}
-          amplitude={1}
-          waviness={1}
-          thickness={0.7}
-          glow={2.6}
-          taper={3}
-          spread={1}
-          intensity={0.6}
-          saturation={2}
-          opacity={1}
+          sweepSpeed={0.25}
+          sweepWidth={1.6}
+          sweepFalloff={6}
           scale={1.5}
-          glass={false}
-          refraction={1}
-          dispersion={1}
-          glassSize={1}
-          hueShift={0}
+          frequency={2}
+          ripple={0.22}
+          bandDensity={11}
+          lineSharpness={5.5}
+          glow={0.22}
+          scanDirection="vertical"
+          colorSpread={0.7}
+          brightness={1}
+          contrast={1.15}
+          softness={1.4}
+          vignette={0.45}
+          scanline={true}
+          grain={true}
+          grainIntensity={0.05}
+          opacity={1}
+          mouseInteraction={true}
+          mouseRadius={0.5}
+          mouseStrength={0.5}
         />
       </div>
 

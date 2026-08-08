@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ViewScreen } from '../types';
 
 interface SideNavProps {
@@ -12,16 +12,27 @@ export const SideNav: React.FC<SideNavProps> = ({
   setCurrentView,
   unreadMessagesCount,
 }) => {
-  if (currentView === 'splash' || currentView === 'verify' || currentView === 'admin') {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (currentView === 'splash' || currentView === 'verify' || currentView === 'admin' || currentView === 'onboarding-details' || currentView === 'payment-step' || currentView === 'awaiting-approval') {
     return null;
   }
 
   return (
-    <nav className="fixed top-0 bottom-0 left-4 sm:left-6 md:left-8 z-40 flex flex-col justify-center items-center py-4 pointer-events-none">
-      <div className="w-16 sm:w-[72px] h-[60vh] min-h-[350px] max-h-[500px] rounded-full bg-black/40 backdrop-blur-xl border border-white/15 shadow-2xl flex flex-col justify-around items-center py-6 px-2 pointer-events-auto">
+    <>
+      {/* Mobile Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="md:hidden fixed top-[18px] left-4 z-50 p-2 rounded-full glass-panel border border-white/20 text-[#f9dcdb] shadow-lg cursor-pointer flex items-center justify-center bg-black/40 backdrop-blur-md"
+      >
+        <span className="material-symbols-outlined">{isOpen ? 'close' : 'menu'}</span>
+      </button>
+
+      <nav className={`fixed top-0 bottom-0 left-4 sm:left-6 md:left-8 z-40 flex flex-col justify-center items-center py-4 pointer-events-none transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}`}>
+        <div className="w-16 sm:w-[72px] h-[60vh] min-h-[350px] max-h-[500px] rounded-full bg-black/80 md:bg-black/40 backdrop-blur-xl border border-white/15 shadow-2xl flex flex-col justify-around items-center py-6 px-2 pointer-events-auto">
         {/* Discover / Swipe */}
         <button
-          onClick={() => setCurrentView('discover')}
+          onClick={() => { setCurrentView('discover'); setIsOpen(false); }}
           className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
             currentView === 'discover'
               ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
@@ -34,7 +45,7 @@ export const SideNav: React.FC<SideNavProps> = ({
 
         {/* Secret Crush Feature */}
         <button
-          onClick={() => setCurrentView('crush')}
+          onClick={() => { setCurrentView('crush'); setIsOpen(false); }}
           className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
             currentView === 'crush'
               ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
@@ -47,7 +58,7 @@ export const SideNav: React.FC<SideNavProps> = ({
 
         {/* Campus Pass Upgrade */}
         <button
-          onClick={() => setCurrentView('campus-pass')}
+          onClick={() => { setCurrentView('campus-pass'); setIsOpen(false); }}
           className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
             currentView === 'campus-pass'
               ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
@@ -60,7 +71,7 @@ export const SideNav: React.FC<SideNavProps> = ({
 
         {/* Chats & Messages */}
         <button
-          onClick={() => setCurrentView('chats')}
+          onClick={() => { setCurrentView('chats'); setIsOpen(false); }}
           className={`relative flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
             currentView === 'chats' || currentView === 'chat-detail'
               ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
@@ -78,7 +89,7 @@ export const SideNav: React.FC<SideNavProps> = ({
 
         {/* Profile */}
         <button
-          onClick={() => setCurrentView('profile')}
+          onClick={() => { setCurrentView('profile'); setIsOpen(false); }}
           className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
             currentView === 'profile'
               ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
@@ -90,5 +101,6 @@ export const SideNav: React.FC<SideNavProps> = ({
         </button>
       </div>
     </nav>
+    </>
   );
 };

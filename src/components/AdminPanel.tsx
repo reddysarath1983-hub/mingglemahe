@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ASSETS } from '../data/studentProfiles';
 import { AdminActivity, AdminStats, ApprovedCredential } from '../types';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface AdminPanelProps {
   stats: AdminStats;
@@ -33,8 +35,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    setActivities(initialActivities);
-  }, [initialActivities]);
+    if (!db) return;
+    const q = query(collection(db, "pending_registrations"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fbActivities: AdminActivity[] = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          userName: data.studentName || 'Unknown Student',
+          action: `Campus Pass Payment Screenshot Uploaded (${data.amount || '₹6.69'})`,
+          status: data.status === 'approved' ? 'Completed' : (data.status === 'rejected' ? 'Investigation Required' : 'Pending Review'),
+          time: 'Just now',
+          avatarUrl: ASSETS.userAvatar,
+          paymentDetails: {
+            upiNumber: 'mingle.manipal@okaxis',
+            transactionRef: data.transactionRef || 'N/A',
+            amount: data.amount || '₹6.69',
+            screenshotUrl: data.screenshotUrl || '',
+            studentPhoneNumber: data.phoneNumber || '',
+            studentEmail: data.email || '',
+          },
+          assignedCredential: data.loginId ? { loginId: data.loginId, passcode: data.passcode } : undefined
+        };
+      });
+      setActivities(fbActivities);
+    }, (error) => {
+      console.error("Firebase listen error:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // When opening review item, prefill credentials
   useEffect(() => {
@@ -56,21 +86,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setProdPasscode(`Campus#${randomNum}`);
   };
 
-  const handleApproveWithCredential = (id: string) => {
+  const handleApproveWithCredential = async (id: string) => {
     const finalLoginId = prodLoginId.trim() || `MPL-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     const finalPasscode = prodPasscode.trim() || `Campus#${Math.floor(1000 + Math.random() * 9000)}`;
 
-    setActivities((prev) =>
-      prev.map((act) =>
-        act.id === id
-          ? {
-              ...act,
-              status: 'Completed' as const,
-              assignedCredential: { loginId: finalLoginId, passcode: finalPasscode },
-            }
-          : act
-      )
-    );
+    try {
+      const docRef = doc(db, "pending_registrations", id);
+      await updateDoc(docRef, {
+        status: 'approved',
+        loginId: finalLoginId,
+        passcode: finalPasscode,
+      });
+      
+      const act = activities.find(a => a.id === id);
+      if (act) {
+        await setDoc(doc(db, "approved_credentials", id), {
+          studentName: act.userName,
+          studentPhoneNumber: act.paymentDetails?.studentPhoneNumber || '',
+          studentEmail: act.paymentDetails?.studentEmail || '',
+          loginId: finalLoginId,
+          passcode: finalPasscode,
+          status: 'Approved'
+        });
+      }
+    } catch (err) {
+      console.error("Firebase update error:", err);
+    }
 
     if (onApprovePaymentWithCredential) {
       onApprovePaymentWithCredential(id, { loginId: finalLoginId, passcode: finalPasscode });
@@ -89,12 +130,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleReject = (id: string) => {
-    setActivities((prev) =>
-      prev.map((act) =>
-        act.id === id ? { ...act, status: 'Investigation Required' as const } : act
-      )
-    );
+  const handleReject = async (id: string) => {
+    try {
+      const docRef = doc(db, "pending_registrations", id);
+      await updateDoc(docRef, { status: 'rejected' });
+    } catch (err) {
+      console.error(err);
+    }
     if (onRejectPayment) {
       onRejectPayment(id);
     }

@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { storage, db } from '../firebase';
 
 interface PaymentStepScreenProps {
   studentName: string;
@@ -26,6 +29,7 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
 
   const [transactionRef, setTransactionRef] = useState('');
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCopyUpi = () => {
@@ -37,33 +41,53 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
   const handleScreenshotSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      setScreenshotFile(file);
       const url = URL.createObjectURL(file);
       setScreenshotPreview(url);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionRef.trim()) {
       alert('Please enter your 12-digit UPI UTR / Transaction Reference ID.');
       return;
     }
-    if (!screenshotPreview) {
+    if (!screenshotFile) {
       alert('Please upload a screenshot of your payment confirmation.');
       return;
     }
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      const storageRef = ref(storage, `payment_screenshots/${phoneNumber}_${Date.now()}`);
+      await uploadBytes(storageRef, screenshotFile);
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      await addDoc(collection(db, "pending_registrations"), {
+        studentName,
+        phoneNumber,
+        email,
+        transactionRef,
+        amount: '₹6.69',
+        screenshotUrl: downloadUrl,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+
       onCompletePayment({
         upiNumber: upiId,
         transactionRef,
         amount: '₹6.69',
-        screenshotUrl: screenshotPreview,
+        screenshotUrl: downloadUrl,
       });
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      alert("There was an error submitting your payment. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (

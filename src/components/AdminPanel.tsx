@@ -3,6 +3,7 @@ import { ASSETS } from '../data/studentProfiles';
 import { AdminActivity, AdminStats, ApprovedCredential } from '../types';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { AdminLiveChats } from './AdminLiveChats';
 
 interface AdminPanelProps {
   stats: AdminStats;
@@ -24,7 +25,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onApprovePaymentWithCredential,
   onRejectPayment,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'credentials' | 'analytics' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'credentials' | 'analytics' | 'reports' | 'chats'>('dashboard');
   const [activities, setActivities] = useState<AdminActivity[]>(initialActivities);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedReviewItem, setSelectedReviewItem] = useState<AdminActivity | null>(null);
@@ -186,6 +187,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {[
               { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
               { id: 'verification', label: 'Student Payments', icon: 'payments', badge: pendingCount },
+              { id: 'chats', label: 'Live Chats', icon: 'forum', badge: 0 },
               { id: 'analytics', label: 'Analytics', icon: 'monitoring' },
               { id: 'reports', label: 'Moderation Logs', icon: 'flag' },
             ].map((item) => (
@@ -265,9 +267,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Dashboard Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 z-10 space-y-6">
           <div>
-            <h2 className="text-xl font-bold text-[#f9dcdb] mb-1">Live Registrar Monitoring</h2>
-            <p className="text-xs text-[#e3bebd]">Review student registrations, payment screenshots & UTR references.</p>
+            <h2 className="text-xl font-bold text-[#f9dcdb] mb-1">
+              {activeTab === 'chats' ? 'Live User Intercepts' : 'Live Registrar Monitoring'}
+            </h2>
+            <p className="text-xs text-[#e3bebd]">
+              {activeTab === 'chats' ? 'Message live users directly as Bhavya or Pragya.' : 'Review student registrations, payment screenshots & UTR references.'}
+            </p>
           </div>
+          
+          {activeTab === 'chats' ? (
+            <AdminLiveChats />
+          ) : (
+            <>
 
           {/* Bento Grid Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -399,6 +410,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </table>
             </div>
           </div>
+          </>
+          )}
         </div>
       </main>
 

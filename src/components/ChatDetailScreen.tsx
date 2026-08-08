@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MatchItem, ChatMessage } from '../types';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface ChatDetailScreenProps {
   match: MatchItem;
@@ -13,17 +15,38 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
   onSendMessage,
 }) => {
   const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
 
-  const handleSend = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!db) return;
+    const q = query(collection(db, 'chats', match.id, 'messages'), orderBy('timestamp', 'asc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsub();
+  }, [match.id]);
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !db) return;
 
-    onSendMessage(match.id, inputText);
+    const msgText = inputText;
     setInputText('');
+
+    await addDoc(collection(db, 'chats', match.id, 'messages'), {
+      text: msgText,
+      senderId: 'user',
+      isUser: true,
+      timestamp: serverTimestamp()
+    });
+    
+    await updateDoc(doc(db, 'chats', match.id), {
+      updatedAt: serverTimestamp()
+    });
   };
 
   const handleIcebreaker = (text: string) => {
-    onSendMessage(match.id, text);
+    setInputText(text);
   };
 
   return (
@@ -55,13 +78,22 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
           </p>
         </div>
 
-        <div className="px-2.5 py-1 rounded-full bg-[#0ba574]/20 border border-[#5edda8]/30 text-[#5edda8] text-[10px] font-bold">
-          ONLINE
+        <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-full bg-[#0ba574]/20 border border-[#5edda8]/30 text-[#5edda8] text-[10px] font-bold">
+            ONLINE
+          </div>
+          <button
+            onClick={() => alert('Calling ' + match.student.name + '...')}
+            className="p-1.5 rounded-full bg-gradient-to-r from-[#FF4B5C]/20 to-[#6C4AB6]/20 border border-[#FF4B5C]/40 text-[#ffb3b3] hover:opacity-80 transition-opacity flex items-center justify-center cursor-pointer shadow-lg animate-pulse"
+            title="Start Call"
+          >
+            <span className="material-symbols-outlined text-sm">call</span>
+          </button>
         </div>
       </div>
 
       {/* Icebreaker Suggestions */}
-      {match.messages.length < 3 && (
+      {messages.length < 3 && (
         <div className="mb-3 flex gap-2 overflow-x-auto hide-scrollbar py-1">
           {[
             '☕ Coffee at Astra Cafe?',
@@ -80,8 +112,8 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
       )}
 
       {/* Chat Messages Stream */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-2">
-        {match.messages.map((msg) => (
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-2 flex flex-col">
+        {messages.map((msg) => (
           <div
             key={msg.id}
             className={`flex flex-col ${msg.isUser ? 'items-end' : 'items-start'}`}
@@ -95,9 +127,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
             >
               {msg.text}
             </div>
-            <span className="text-[10px] text-[#e3bebd]/60 mt-1 px-1 font-mono">
-              {msg.timestamp}
-            </span>
           </div>
         ))}
       </div>

@@ -7,6 +7,8 @@ import {
   INITIAL_ADMIN_ACTIVITIES,
   ASSETS,
 } from './data/studentProfiles';
+import { db } from './firebase';
+import { doc, setDoc, serverTimestamp, collection, getDocs, addDoc } from 'firebase/firestore';
 
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
@@ -200,28 +202,44 @@ export default function App() {
   };
 
   // Handle Swipe Like
-  const handleSwipeLike = (student: StudentProfile) => {
-    if (student.id === '1' || student.id === '2') {
+  const handleSwipeLike = async (student: StudentProfile) => {
+    if (student.id === 'bhavya-1' || student.id === 'pragya-1') {
       setMatchedStudentForCelebration(student);
+      
+      const chatId = `${userOnboardingData.phoneNumber}_${student.id}`;
+      if (db) {
+        const chatRef = doc(db, 'chats', chatId);
+        await setDoc(chatRef, {
+          userId: userOnboardingData.phoneNumber,
+          userName: userOnboardingData.fullName,
+          studentId: student.id,
+          studentName: student.name,
+          studentAvatar: student.avatarUrl,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        const msgsRef = collection(db, 'chats', chatId, 'messages');
+        const msgsSnap = await getDocs(msgsRef);
+        if (msgsSnap.empty) {
+          await addDoc(msgsRef, {
+             senderId: student.id,
+             text: `Hey ${userOnboardingData.fullName}! It's a match! 💕`,
+             isUser: false,
+             timestamp: serverTimestamp()
+          });
+        }
+      }
       
       setMatches((prev) => {
         if (prev.some((m) => m.student.id === student.id)) return prev;
         const newMatch: MatchItem = {
-          id: `match-${student.id}`,
+          id: chatId, // use chatId as match id
           student,
           matchedAt: 'Just now',
           lastMessage: 'Hey! It is a match! 👋',
           lastMessageTime: 'Just now',
           unreadCount: 1,
-          messages: [
-            {
-              id: `msg-${Date.now()}`,
-              senderId: student.id,
-              text: `Hey! It is a match! Saw you on Mingle@Manipal 🎉`,
-              timestamp: 'Just now',
-              isUser: false,
-            },
-          ],
+          messages: [],
         };
         return [newMatch, ...prev];
       });
@@ -233,56 +251,7 @@ export default function App() {
   };
 
   const handleSendMessage = (matchId: string, text: string) => {
-    setMatches((prev) =>
-      prev.map((m) => {
-        if (m.id !== matchId) return m;
-
-        const userMsg = {
-          id: `msg-${Date.now()}`,
-          senderId: 'user',
-          text,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isUser: true,
-        };
-
-        const updatedMessages = [...m.messages, userMsg];
-
-        setTimeout(() => {
-          setMatches((currentMatches) =>
-            currentMatches.map((item) => {
-              if (item.id !== matchId) return item;
-              const responses = [
-                `That sounds awesome! Are you heading to Kamath canteen or Astra later? ☕`,
-                `Haha completely agree! We should definitely catch up after classes. 😊`,
-                `Nice! KMC library or End Point is great for sunset hangs.`,
-              ];
-              const replyText = responses[Math.floor(Math.random() * responses.length)];
-              const replyMsg = {
-                id: `reply-${Date.now()}`,
-                senderId: item.student.id,
-                text: replyText,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                isUser: false,
-              };
-              return {
-                ...item,
-                messages: [...item.messages, replyMsg],
-                lastMessage: replyText,
-                lastMessageTime: 'Just now',
-              };
-            })
-          );
-        }, 1500);
-
-        return {
-          ...m,
-          messages: updatedMessages,
-          lastMessage: text,
-          lastMessageTime: 'Just now',
-          unreadCount: 0,
-        };
-      })
-    );
+    // This is handled directly in ChatDetailScreen now via Firebase
   };
 
   const handleSelectMatch = (match: MatchItem) => {

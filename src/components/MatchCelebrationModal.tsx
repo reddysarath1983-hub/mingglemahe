@@ -64,7 +64,7 @@ export const MatchCelebrationModal: React.FC<MatchCelebrationModalProps> = ({
           {/* Left Profile (User) */}
           <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-4 border-[#1e0f10] overflow-hidden relative z-10 -mr-5 match-glow bg-[#2c1b1b] shadow-2xl">
             <img
-              src={ASSETS.matchUserLeft}
+                src={ASSETS.userAvatar}
               alt="Your Profile"
               className="w-full h-full object-cover"
             />
@@ -73,7 +73,7 @@ export const MatchCelebrationModal: React.FC<MatchCelebrationModalProps> = ({
           {/* Right Profile (Matched Student) */}
           <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-4 border-[#1e0f10] overflow-hidden relative z-20 -ml-5 match-glow bg-[#2c1b1b] shadow-2xl">
             <img
-              src={matchedStudent.avatarUrl || ASSETS.matchAanyaRight}
+                src={matchedStudent.avatarUrl}
               alt={`${matchedStudent.name}'s Profile`}
               className="w-full h-full object-cover"
             />

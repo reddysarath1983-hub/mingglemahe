@@ -83,22 +83,7 @@ export default function App() {
 
   const [adminStats, setAdminStats] = useState<AdminStats>(INITIAL_ADMIN_STATS);
   const [adminActivities, setAdminActivities] = useState<AdminActivity[]>(INITIAL_ADMIN_ACTIVITIES);
-  const [approvedCredentials, setApprovedCredentials] = useState<ApprovedCredential[]>([
-    {
-      id: 'cred-sample',
-      studentId: 'user-sample',
-      studentName: 'Alex Sharma',
-      studentEmail: 'alex.sharma@learner.manipal.edu',
-      studentPhoneNumber: '9876543210',
-      studentRegNo: '220911048',
-      loginId: 'MPL-2026-8812',
-      passcode: 'Campus#8812',
-      status: 'Approved',
-      approvedAt: 'Yesterday',
-      utrRef: '982144510298',
-      isVerifiedStudent: true,
-    },
-  ]);
+  const [approvedCredentials, setApprovedCredentials] = useState<ApprovedCredential[]>([]);
 
   // Sync approved credentials and user profiles from Supabase real-time
   useEffect(() => {
@@ -624,21 +609,60 @@ export default function App() {
               ?.transactionRef || ''
           }
           approvedCredentials={approvedCredentials}
-          onLoginSuccess={(cred) => {
+          onLoginSuccess={async (cred) => {
             setHasCampusPass(true);
-            setUserOnboardingData((prev) => ({
-              ...prev,
-              fullName: cred.studentName || prev.fullName,
-              phoneNumber: cred.studentPhoneNumber || cred.loginId || prev.phoneNumber,
-              email: cred.studentEmail || prev.email,
-              gender: cred.gender || prev.gender,
-              lookingFor: cred.lookingFor || prev.lookingFor,
-              major: cred.major || prev.major,
-              campus: cred.campus || prev.campus,
-              bio: cred.bio || prev.bio,
-              quote: cred.quote || prev.quote,
-              avatarUrl: cred.avatarUrl || prev.avatarUrl,
-            }));
+
+            let sName = cred.studentName || userOnboardingData.fullName;
+            let sPhone = cred.studentPhoneNumber || cred.loginId || userOnboardingData.phoneNumber;
+            let sEmail = cred.studentEmail || userOnboardingData.email;
+            let sGender = cred.gender || userOnboardingData.gender;
+            let sLookingFor = cred.lookingFor || userOnboardingData.lookingFor;
+            let sMajor = cred.major || userOnboardingData.major;
+            let sCampus = cred.campus || userOnboardingData.campus;
+            let sBio = cred.bio || userOnboardingData.bio;
+            let sQuote = cred.quote || userOnboardingData.quote;
+            let sAvatar = cred.avatarUrl || userOnboardingData.avatarUrl;
+
+            try {
+              const { data: dbProf } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .or(`phone_number.eq.${sPhone},login_id.eq.${cred.loginId}`)
+                .limit(1);
+
+              if (dbProf && dbProf.length > 0) {
+                const found = dbProf[0];
+                if (found.full_name) sName = found.full_name;
+                if (found.phone_number) sPhone = found.phone_number;
+                if (found.email) sEmail = found.email;
+                if (found.gender) sGender = found.gender;
+                if (found.looking_for) sLookingFor = found.looking_for;
+                if (found.major) sMajor = found.major;
+                if (found.campus) sCampus = found.campus;
+                if (found.bio) sBio = found.bio;
+                if (found.quote) sQuote = found.quote;
+                if (found.avatar_url) sAvatar = found.avatar_url;
+              }
+            } catch (err) {
+              console.warn("User profile fetch on awaiting approval login error:", err);
+            }
+
+            setUserOnboardingData({
+              fullName: sName,
+              phoneNumber: sPhone,
+              regNumber: sPhone,
+              email: sEmail,
+              gender: sGender as any,
+              lookingFor: sLookingFor as any,
+              major: sMajor,
+              year: userOnboardingData.year || '2nd Year',
+              campus: sCampus,
+              bio: sBio,
+              quote: sQuote,
+              interests: userOnboardingData.interests || ['Coffee', 'Music'],
+              avatarUrl: sAvatar,
+            });
+
             setCurrentView('discover');
           }}
           onOpenAdmin={() => setShowAdminPasscodeModal(true)}

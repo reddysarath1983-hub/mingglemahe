@@ -74,15 +74,24 @@ export const AwaitingApprovalScreen: React.FC<AwaitingApprovalScreenProps> = ({
     };
   }, []);
 
-  // Combine props, live DB credentials, and defaults
+  // Combine props, live DB credentials, and defaults for manual lookup
   const allCredentials = [...DEFAULT_MANIPAL_CREDENTIALS, ...approvedCredentials, ...dbCredentials];
 
-  // Check if current student's reg number, phone, UTR, or name matches an approved credential
-  const myCredential = allCredentials.find((c) => {
-    const matchReg = regNumber && (c.studentRegNo === regNumber || c.studentPhoneNumber === regNumber);
+  // Exclude demo credentials from automatic student approval check
+  const realApprovedCredentials = [...approvedCredentials, ...dbCredentials].filter(
+    (c) => c.id !== 'default-1' && c.id !== 'default-2' && c.id !== 'cred-sample'
+  );
+
+  // Check if current student's registration matches an approved credential in Supabase / approved state
+  const myCredential = realApprovedCredentials.find((c) => {
+    const isApproved = c.status === 'Approved' || (c.status as string) === 'approved';
+    if (!isApproved) return false;
+
     const matchUtr = transactionRef && c.utrRef === transactionRef;
+    const matchPhone = regNumber && (c.studentPhoneNumber === regNumber || c.studentRegNo === regNumber);
     const matchName = studentName && c.studentName.trim().toLowerCase() === studentName.trim().toLowerCase();
-    return (matchReg || matchUtr || matchName) && c.status === 'Approved';
+
+    return matchUtr || (matchPhone && matchName);
   });
 
   const handleManualLogin = async (e: React.FormEvent) => {

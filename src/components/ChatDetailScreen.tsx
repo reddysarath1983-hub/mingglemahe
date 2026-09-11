@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MatchItem, ChatMessage } from '../types';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 
 interface ChatDetailScreenProps {
   match: MatchItem;
@@ -15,34 +14,102 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
   onSendMessage,
 }) => {
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>(match.messages || []);
 
   useEffect(() => {
-    if (!db) return;
-    const q = query(collection(db, 'chats', match.id, 'messages'), orderBy('timestamp', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
+    const fetchMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('match_id', match.id)
+          .order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          setMessages(data.map((msg: any) => ({
+            id: msg.id,
+            text: msg.text,
+            isUser: msg.is_user,
+            senderId: msg.sender_id,
+            timestamp: msg.created_at,
+          })));
+        }
+      } catch (err) {
+        console.warn("Supabase chat fetch warning:", err);
+      }
+    };
+
+    fetchMessages();
+
+    const channel = supabase
+      .channel(`chat_${match.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `match_id=eq.${match.id}` }, (payload) => {
+        const msg = payload.new;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          const hasTemp = prev.some((m) => m.text === msg.text && m.isUser === msg.is_user && String(m.id).startsWith('msg-'));
+          if (hasTemp) {
+            return prev.map((m) =>
+              m.text === msg.text && m.isUser === msg.is_user && String(m.id).startsWith('msg-')
+                ? {
+                    id: msg.id,
+                    text: msg.text,
+                    isUser: msg.is_user,
+                    senderId: msg.sender_id,
+                    timestamp: msg.created_at,
+                  }
+                : m
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: msg.id,
+              text: msg.text,
+              isUser: msg.is_user,
+              senderId: msg.sender_id,
+              timestamp: msg.created_at,
+            },
+          ];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [match.id]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !db) return;
+    if (!inputText.trim()) return;
 
     const msgText = inputText;
     setInputText('');
 
-    await addDoc(collection(db, 'chats', match.id, 'messages'), {
+    const localMsg = {
+      id: `msg-${Date.now()}`,
       text: msgText,
       senderId: 'user',
       isUser: true,
-      timestamp: serverTimestamp()
-    });
-    
-    await updateDoc(doc(db, 'chats', match.id), {
-      updatedAt: serverTimestamp()
-    });
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, localMsg]);
+
+    try {
+      await supabase.from('chat_messages').insert([
+        {
+          match_id: match.id,
+          text: msgText,
+          sender_id: 'user',
+          is_user: true,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } catch (err) {
+      console.warn("Supabase chat insert warning:", err);
+    }
   };
 
   const handleIcebreaker = (text: string) => {
@@ -82,13 +149,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({
           <div className="px-2.5 py-1 rounded-full bg-[#0ba574]/20 border border-[#5edda8]/30 text-[#5edda8] text-[10px] font-bold">
             ONLINE
           </div>
-          <button
-            onClick={() => alert('Calling ' + match.student.name + '...')}
-            className="p-1.5 rounded-full bg-gradient-to-r from-[#FF4B5C]/20 to-[#6C4AB6]/20 border border-[#FF4B5C]/40 text-[#ffb3b3] hover:opacity-80 transition-opacity flex items-center justify-center cursor-pointer shadow-lg animate-pulse"
-            title="Start Call"
-          >
-            <span className="material-symbols-outlined text-sm">call</span>
-          </button>
         </div>
       </div>
 

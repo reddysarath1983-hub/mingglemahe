@@ -1,38 +1,33 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { createClient } from '@supabase/supabase-js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoNEcFb7vwghr_x8BkQGOHP3Q49FiEF3M",
-  authDomain: "manipal-6615f.firebaseapp.com",
-  projectId: "manipal-6615f",
-  storageBucket: "manipal-6615f.firebasestorage.app",
-  messagingSenderId: "1096582879957",
-  appId: "1:1096582879957:web:a383ea0aa24851d3a1605c",
-  measurementId: "G-YT79QE1KST"
-};
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://eetzyuvtzjswzqrqoyuh.supabase.co';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_qZEla6P3oH4Rn9ELDv2lLA_YsmNhJI3';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function simulateRegistration() {
   try {
-    console.log("Simulating a student registration...");
-    
-    // We mock a payment screenshot using a placeholder image
+    console.log("Simulating student registration with Supabase (https://eetzyuvtzjswzqrqoyuh.supabase.co)...");
     const mockScreenshotUrl = "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
 
-    const docRef = await addDoc(collection(db, "pending_registrations"), {
-      studentName: "Antigravity AI (Test User)",
-      phoneNumber: "9876543210",
-      email: "antigravity.ai@manipal.edu",
-      transactionRef: "SIMULATED_UTR_9988776655",
-      amount: "₹6.69",
-      screenshotUrl: mockScreenshotUrl,
-      status: "pending",
-      createdAt: serverTimestamp(),
-    });
+    const { data, error } = await supabase.from('pending_registrations').insert([
+      {
+        student_name: "Antigravity AI (Test User)",
+        phone_number: "9876543210",
+        email: "antigravity.ai@learner.manipal.edu",
+        transaction_ref: "SIMULATED_UTR_9988776655",
+        amount: "₹6.69",
+        screenshot_url: mockScreenshotUrl,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      },
+    ]);
 
-    console.log("Successfully registered! Document ID:", docRef.id);
+    if (error) {
+      console.log("Supabase insert result:", error.message);
+    } else {
+      console.log("Successfully registered user in Supabase!");
+    }
   } catch (error) {
     console.error("Error during simulated registration:", error);
   }

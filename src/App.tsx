@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewScreen, StudentProfile, MatchItem, AdminStats, AdminActivity, ApprovedCredential } from './types';
 import {
   INITIAL_PROFILES,
@@ -7,8 +7,7 @@ import {
   INITIAL_ADMIN_ACTIVITIES,
   ASSETS,
 } from './data/studentProfiles';
-import { db } from './firebase';
-import { doc, setDoc, serverTimestamp, collection, getDocs, addDoc } from 'firebase/firestore';
+import { supabase } from './supabase';
 
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
@@ -55,6 +54,7 @@ export default function App() {
   const [userOnboardingData, setUserOnboardingData] = useState<{
     fullName: string;
     phoneNumber: string;
+    regNumber?: string;
     email: string;
     major: string;
     year: string;
@@ -63,17 +63,22 @@ export default function App() {
     quote: string;
     interests: string[];
     avatarUrl: string;
+    gender?: 'male' | 'female' | 'other';
+    lookingFor?: 'female' | 'male' | 'everyone';
   }>({
-    fullName: 'Alex Sharma',
-    phoneNumber: '9876543210',
-    email: 'alex.sharma@manipal.edu',
-    major: 'B.Tech Mechanical',
+    fullName: 'Sarath Reddy',
+    phoneNumber: '7676878700',
+    regNumber: '7676878700',
+    email: 'sarath.reddy@learner.manipal.edu',
+    major: 'B.Tech Computer Science',
     year: '3rd Year',
     campus: 'MIT Manipal',
-    bio: 'Formula student team & coffee lover.',
+    bio: 'Tech enthusiast, late night coder & End Point sunset lover.',
     quote: 'Always looking for good coffee at Astra.',
     interests: ['Coffee', 'Music', 'Coding'],
     avatarUrl: ASSETS.userAvatar,
+    gender: 'male',
+    lookingFor: 'female',
   });
 
   const [adminStats, setAdminStats] = useState<AdminStats>(INITIAL_ADMIN_STATS);
@@ -83,21 +88,186 @@ export default function App() {
       id: 'cred-sample',
       studentId: 'user-sample',
       studentName: 'Alex Sharma',
-      studentEmail: 'alex.sharma@manipal.edu',
+      studentEmail: 'alex.sharma@learner.manipal.edu',
       studentPhoneNumber: '9876543210',
+      studentRegNo: '220911048',
       loginId: 'MPL-2026-8812',
       passcode: 'Campus#8812',
       status: 'Approved',
       approvedAt: 'Yesterday',
       utrRef: '982144510298',
+      isVerifiedStudent: true,
     },
   ]);
 
-  // Handle Onboarding Submission -> Notify Admin
-  const handleOnboardingDetailsSubmit = (details: typeof userOnboardingData) => {
+  // Sync approved credentials and user profiles from Supabase real-time
+  useEffect(() => {
+    const fetchApprovedCredentials = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('approved_credentials')
+          .select('*');
+
+        if (!error && data && data.length > 0) {
+          const spCreds: ApprovedCredential[] = data.map((item: any) => ({
+            id: item.id || `cred-${Date.now()}`,
+            studentId: item.student_id || item.studentId || item.id,
+            studentName: item.student_name || item.studentName || 'Student',
+            studentEmail: item.student_email || item.studentEmail || '',
+            studentPhoneNumber: item.student_phone_number || item.studentPhoneNumber || '',
+            studentRegNo: item.student_reg_no || item.studentRegNo || item.student_phone_number || '',
+            loginId: item.login_id || item.loginId || '',
+            passcode: item.passcode || '',
+            status: item.status || 'Approved',
+            approvedAt: item.approved_at || item.approvedAt || 'Just now',
+            utrRef: item.utr_ref || item.utrRef || '',
+            isVerifiedStudent: item.is_verified_student ?? true,
+          }));
+
+          setApprovedCredentials((prev) => {
+            const map = new Map<string, ApprovedCredential>();
+            prev.forEach(c => map.set(c.id, c));
+            spCreds.forEach(c => map.set(c.id, c));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase fetch approved_credentials warning:", err);
+      }
+    };
+
+    const fetchUserProfiles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*');
+
+        if (!error && data && data.length > 0) {
+          const dbProfiles: StudentProfile[] = data.map((item: any) => ({
+            id: item.phone_number || item.id || `profile-${Date.now()}`,
+            name: item.full_name || 'Manipal Student',
+            age: item.age || 21,
+            gender: item.gender || 'female',
+            lookingFor: item.looking_for || 'male',
+            major: item.major || 'Degree',
+            year: item.year || '3rd Year',
+            campus: item.campus || 'MIT Manipal',
+            quote: item.quote || 'Looking for great coffee and friends!',
+            bio: item.bio || 'Manipal student exploring campus life.',
+            interests: item.interests || ['Coffee', 'Music'],
+            verified: item.is_verified_student ?? true,
+            avatarUrl: item.avatar_url || ASSETS.userAvatar,
+            photos: [item.avatar_url || ASSETS.userAvatar],
+            phoneNumber: item.phone_number,
+            email: item.email,
+          }));
+
+          setProfiles((prev) => {
+            const map = new Map<string, StudentProfile>();
+            prev.forEach(p => map.set(p.id, p));
+            dbProfiles.forEach(p => map.set(p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase fetch user_profiles warning:", err);
+      }
+    };
+
+    fetchApprovedCredentials();
+    fetchUserProfiles();
+
+    const channel = supabase
+      .channel('approved_credentials_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_credentials' }, () => {
+        fetchApprovedCredentials();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => {
+        fetchUserProfiles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Safe helper to save user profiles to Supabase (handles optional gender/looking_for columns seamlessly)
+  const saveUserProfileToSupabase = async (details: {
+    fullName: string;
+    phoneNumber: string;
+    regNumber?: string;
+    email?: string;
+    major?: string;
+    year?: string;
+    campus?: string;
+    bio?: string;
+    quote?: string;
+    interests?: string[];
+    avatarUrl?: string;
+    gender?: string;
+    lookingFor?: string;
+    isVerifiedStudent?: boolean;
+    loginId?: string;
+  }) => {
+    try {
+      const payloadFull: any = {
+        full_name: details.fullName,
+        phone_number: details.phoneNumber,
+        reg_number: details.regNumber || details.phoneNumber,
+        email: details.email || '',
+        major: details.major || '',
+        year: details.year || '',
+        campus: details.campus || '',
+        bio: details.bio || '',
+        quote: details.quote || '',
+        interests: details.interests || [],
+        avatar_url: details.avatarUrl || '',
+        gender: details.gender || 'male',
+        looking_for: details.lookingFor || 'female',
+        login_id: details.loginId || '',
+        verified: true,
+        is_verified_student: details.isVerifiedStudent ?? true,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: fullErr } = await supabase
+        .from('user_profiles')
+        .upsert([payloadFull], { onConflict: 'phone_number' });
+
+      if (fullErr) {
+        // Fallback without gender/looking_for if schema hasn't migrated those columns
+        const { gender, looking_for, ...payloadSafe } = payloadFull;
+        await supabase
+          .from('user_profiles')
+          .upsert([payloadSafe], { onConflict: 'phone_number' });
+      }
+    } catch (err) {
+      console.warn("saveUserProfileToSupabase caught warning:", err);
+    }
+  };
+
+  // Handle Onboarding Submission -> Save profile to DB & Notify Admin
+  const handleOnboardingDetailsSubmit = async (details: typeof userOnboardingData) => {
     setUserOnboardingData(details);
 
-    // Notify Admin of login/registration
+    await saveUserProfileToSupabase({
+      fullName: details.fullName,
+      phoneNumber: details.phoneNumber,
+      regNumber: details.regNumber,
+      email: details.email,
+      major: details.major,
+      year: details.year,
+      campus: details.campus,
+      bio: details.bio,
+      quote: details.quote,
+      interests: details.interests,
+      avatarUrl: details.avatarUrl,
+      gender: details.gender,
+      lookingFor: details.lookingFor,
+      isVerifiedStudent: false,
+    });
+
     const newActivity: AdminActivity = {
       id: `act-${Date.now()}`,
       userName: details.fullName,
@@ -121,7 +291,6 @@ export default function App() {
     amount: string;
     screenshotUrl: string;
   }) => {
-    // Payment status is pending until Admin approves and produces credentials
     setHasCampusPass(false);
 
     const paymentActivity: AdminActivity = {
@@ -151,34 +320,101 @@ export default function App() {
     setCurrentView('awaiting-approval');
   };
 
-  // Handle Admin Approval & Credential Production
-  const handleApprovePaymentWithCredential = (
+  // Handle Admin Approval & Credential Production (Supabase Live DB Operations & MAHE Validation)
+  const handleApprovePaymentWithCredential = async (
     activityId: string,
     credential: { loginId: string; passcode: string }
   ) => {
-    const act = adminActivities.find((a) => a.id === activityId);
-    const studentName = act?.userName || userOnboardingData.fullName;
-    const studentPhoneNumber = act?.paymentDetails?.studentPhoneNumber || userOnboardingData.phoneNumber;
-    const utrRef = act?.paymentDetails?.transactionRef;
+    let act = adminActivities.find((a) => a.id === activityId);
+    let studentName = act?.userName;
+    let studentPhoneNumber = act?.paymentDetails?.studentPhoneNumber;
+    let studentEmail = act?.paymentDetails?.studentEmail;
+    let utrRef = act?.paymentDetails?.transactionRef;
+
+    if (!studentName || !studentPhoneNumber) {
+      try {
+        const { data: reg } = await supabase.from('pending_registrations').select('*').eq('id', activityId).single();
+        if (reg) {
+          studentName = reg.student_name || reg.studentName;
+          studentPhoneNumber = reg.phone_number || reg.phoneNumber;
+          studentEmail = reg.email;
+          utrRef = reg.transaction_ref || reg.transactionRef;
+        }
+      } catch (err) {
+        console.warn("Fetch pending_registrations single error:", err);
+      }
+    }
+
+    studentName = studentName || userOnboardingData.fullName;
+    studentPhoneNumber = studentPhoneNumber || userOnboardingData.phoneNumber;
+    const rawEmail =
+      studentEmail ||
+      userOnboardingData.email ||
+      `${studentName.toLowerCase().replace(/\s+/g, '.')}@learner.manipal.edu`;
+    const regNo = studentPhoneNumber;
+
+    const emailLower = rawEmail.trim().toLowerCase();
+    const isValidMAHE = emailLower.endsWith('@learner.manipal.edu') || emailLower.endsWith('@manipal.edu');
+    const validatedEmail = isValidMAHE
+      ? rawEmail.trim()
+      : `${studentName.toLowerCase().replace(/\s+/g, '.')}@learner.manipal.edu`;
+
+    const credentialId = `cred-${activityId}`;
 
     const newCredential: ApprovedCredential = {
-      id: `cred-${Date.now()}`,
+      id: credentialId,
       studentId: activityId,
       studentName,
-      studentEmail:
-        act?.paymentDetails?.studentEmail ||
-        `${studentName.toLowerCase().replace(/\s+/g, '.')}@manipal.edu`,
+      studentEmail: validatedEmail,
       studentPhoneNumber,
+      studentRegNo: regNo,
       loginId: credential.loginId,
       passcode: credential.passcode,
       status: 'Approved',
       approvedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       utrRef,
+      isVerifiedStudent: true,
     };
+
+    try {
+      await supabase.from('approved_credentials').upsert([
+        {
+          id: credentialId,
+          student_id: activityId,
+          student_name: studentName,
+          student_email: validatedEmail,
+          student_phone_number: studentPhoneNumber,
+          student_reg_no: regNo,
+          login_id: credential.loginId,
+          passcode: credential.passcode,
+          status: 'Approved',
+          approved_at: new Date().toISOString(),
+          utr_ref: utrRef || '',
+          is_verified_student: true,
+        },
+      ]);
+
+      await supabase.from('pending_registrations').update({
+        status: 'approved',
+        login_id: credential.loginId,
+        passcode: credential.passcode,
+      }).eq('id', activityId);
+
+      await saveUserProfileToSupabase({
+        fullName: studentName,
+        phoneNumber: studentPhoneNumber,
+        regNumber: regNo,
+        email: validatedEmail,
+        loginId: credential.loginId,
+        isVerifiedStudent: true,
+      });
+    } catch (err) {
+      console.warn("Supabase approval save warning:", err);
+    }
 
     setApprovedCredentials((prev) => [
       newCredential,
-      ...prev.filter((c) => c.studentPhoneNumber !== studentPhoneNumber),
+      ...prev.filter((c) => c.studentPhoneNumber !== studentPhoneNumber && c.id !== credentialId),
     ]);
 
     setAdminActivities((prev) =>
@@ -207,33 +443,26 @@ export default function App() {
       setMatchedStudentForCelebration(student);
       
       const chatId = `${userOnboardingData.phoneNumber}_${student.id}`;
-      if (db) {
-        const chatRef = doc(db, 'chats', chatId);
-        await setDoc(chatRef, {
-          userId: userOnboardingData.phoneNumber,
-          userName: userOnboardingData.fullName,
-          studentId: student.id,
-          studentName: student.name,
-          studentAvatar: student.avatarUrl,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-
-        const msgsRef = collection(db, 'chats', chatId, 'messages');
-        const msgsSnap = await getDocs(msgsRef);
-        if (msgsSnap.empty) {
-          await addDoc(msgsRef, {
-             senderId: student.id,
-             text: `Hey ${userOnboardingData.fullName}! It's a match! 💕`,
-             isUser: false,
-             timestamp: serverTimestamp()
-          });
-        }
+      try {
+        await supabase.from('chats').upsert([
+          {
+            id: chatId,
+            user_phone: userOnboardingData.phoneNumber,
+            user_name: userOnboardingData.fullName,
+            student_id: student.id,
+            student_name: student.name,
+            student_avatar: student.avatarUrl,
+            updated_at: new Date().toISOString(),
+          },
+        ]);
+      } catch (err) {
+        console.warn("Supabase chat create warning:", err);
       }
       
       setMatches((prev) => {
         if (prev.some((m) => m.student.id === student.id)) return prev;
         const newMatch: MatchItem = {
-          id: chatId, // use chatId as match id
+          id: chatId,
           student,
           matchedAt: 'Just now',
           lastMessage: 'Hey! It is a match! 👋',
@@ -262,6 +491,41 @@ export default function App() {
     setCurrentView('chat-detail');
   };
 
+  const handleUpdateUserProfile = async (updated: Partial<typeof userOnboardingData>) => {
+    const updatedData = {
+      ...userOnboardingData,
+      ...updated,
+    };
+    setUserOnboardingData(updatedData);
+
+    await saveUserProfileToSupabase({
+      fullName: updatedData.fullName,
+      phoneNumber: updatedData.phoneNumber,
+      email: updatedData.email,
+      major: updatedData.major,
+      year: updatedData.year,
+      campus: updatedData.campus,
+      bio: updatedData.bio,
+      quote: updatedData.quote,
+      avatarUrl: updatedData.avatarUrl,
+      gender: updatedData.gender,
+      lookingFor: updatedData.lookingFor,
+    });
+  };
+
+  const displayedProfiles = profiles.filter((p) => {
+    // Exclude current logged in user
+    const isSelf =
+      (userOnboardingData.phoneNumber && p.phoneNumber === userOnboardingData.phoneNumber) ||
+      (userOnboardingData.fullName && p.name.toLowerCase() === userOnboardingData.fullName.toLowerCase());
+    if (isSelf) return false;
+
+    if (!userOnboardingData.lookingFor || userOnboardingData.lookingFor === 'everyone') {
+      return true;
+    }
+    return p.gender === userOnboardingData.lookingFor;
+  });
+
   const totalUnreadCount = matches.reduce((acc, curr) => acc + curr.unreadCount, 0);
 
   return (
@@ -286,10 +550,8 @@ export default function App() {
           grainIntensity={0.05}
           mouseInteraction={true}
           mouseStrength={0.3}
-          opacity={1}
         />
       </div>
-
       <SplashCursor
         DENSITY_DISSIPATION={3.5}
         VELOCITY_DISSIPATION={2}
@@ -313,6 +575,7 @@ export default function App() {
         onOpenAdmin={() => setShowAdminPasscodeModal(true)}
         onOpenPreviews={() => setShowPreviewsModal(true)}
         onOpenStudentLogin={() => setShowStudentLoginModal(true)}
+        userAvatarUrl={userOnboardingData.avatarUrl}
       />
 
       {/* Main Screen Views */}
@@ -335,6 +598,7 @@ export default function App() {
 
       {currentView === 'verify' && (
         <VerificationScreen
+          studentEmail={userOnboardingData.email}
           onVerifiedContinue={() => setCurrentView('payment-step')}
           onOpenTerms={() => setModalTermsType('terms')}
           onOpenGuidelines={() => setModalTermsType('guidelines')}
@@ -362,6 +626,19 @@ export default function App() {
           approvedCredentials={approvedCredentials}
           onLoginSuccess={(cred) => {
             setHasCampusPass(true);
+            setUserOnboardingData((prev) => ({
+              ...prev,
+              fullName: cred.studentName || prev.fullName,
+              phoneNumber: cred.studentPhoneNumber || cred.loginId || prev.phoneNumber,
+              email: cred.studentEmail || prev.email,
+              gender: cred.gender || prev.gender,
+              lookingFor: cred.lookingFor || prev.lookingFor,
+              major: cred.major || prev.major,
+              campus: cred.campus || prev.campus,
+              bio: cred.bio || prev.bio,
+              quote: cred.quote || prev.quote,
+              avatarUrl: cred.avatarUrl || prev.avatarUrl,
+            }));
             setCurrentView('discover');
           }}
           onOpenAdmin={() => setShowAdminPasscodeModal(true)}
@@ -370,7 +647,7 @@ export default function App() {
 
       {currentView === 'discover' && (
         <DiscoverScreen
-          profiles={profiles}
+          profiles={displayedProfiles}
           onSwipeLike={handleSwipeLike}
           onSwipePass={() => {}}
           onSuperLike={handleSuperLike}
@@ -404,6 +681,8 @@ export default function App() {
 
       {currentView === 'profile' && (
         <UserProfileScreen
+          userProfile={userOnboardingData}
+          onUpdateProfile={handleUpdateUserProfile}
           onOpenCampusPass={() => setShowCampusPassModal(true)}
           hasCampusPass={hasCampusPass}
           onOpenAdmin={() => setShowAdminPasscodeModal(true)}
@@ -506,13 +785,65 @@ export default function App() {
         <StudentLoginModal
           onClose={() => setShowStudentLoginModal(false)}
           approvedCredentials={approvedCredentials}
-          onLoginSuccess={(cred) => {
+          onLoginSuccess={async (cred) => {
             setHasCampusPass(true);
-            setUserOnboardingData((prev) => ({
-              ...prev,
-              fullName: cred.name,
-              phoneNumber: cred.loginId,
-            }));
+
+            let sName = cred.studentName || cred.loginId;
+            let sPhone = cred.studentPhoneNumber || cred.loginId;
+            let sEmail = cred.studentEmail || `${sName.toLowerCase().replace(/\s+/g, '.')}@learner.manipal.edu`;
+            let sGender = cred.gender;
+            let sLookingFor = cred.lookingFor;
+            let sMajor = cred.major;
+            let sCampus = cred.campus;
+            let sBio = cred.bio;
+            let sQuote = cred.quote;
+            let sAvatar = cred.avatarUrl;
+
+            try {
+              const { data: dbProf } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .or(`phone_number.eq.${sPhone},full_name.ilike.${sName},login_id.eq.${cred.loginId}`)
+                .limit(1);
+
+              if (dbProf && dbProf.length > 0) {
+                const found = dbProf[0];
+                sName = found.full_name || sName;
+                sPhone = found.phone_number || sPhone;
+                sEmail = found.email || sEmail;
+                sGender = found.gender || sGender;
+                sLookingFor = found.looking_for || sLookingFor;
+                sMajor = found.major || sMajor;
+                sCampus = found.campus || sCampus;
+                sBio = found.bio || sBio;
+                sQuote = found.quote || sQuote;
+                sAvatar = found.avatar_url || sAvatar;
+              }
+            } catch (err) {
+              console.warn("Supabase login profile fetch warning:", err);
+            }
+
+            const userGender = sGender || (sName?.toLowerCase().includes('anya') ? 'female' : 'male');
+            const userLookingFor = sLookingFor || (userGender === 'female' ? 'male' : 'female');
+
+            const newUserData = {
+              fullName: sName,
+              phoneNumber: sPhone,
+              email: sEmail,
+              gender: userGender as any,
+              lookingFor: userLookingFor as any,
+              major: sMajor || 'B.Tech Computer Science',
+              year: '3rd Year',
+              campus: sCampus || 'MIT Manipal',
+              bio: sBio || 'Tech enthusiast, late night coder & End Point sunset lover.',
+              quote: sQuote || 'Always looking for good coffee at Astra.',
+              avatarUrl: sAvatar || ASSETS.userAvatar,
+              interests: userOnboardingData.interests,
+            };
+
+            setUserOnboardingData(newUserData);
+            saveUserProfileToSupabase(newUserData);
+
             setShowStudentLoginModal(false);
             setCurrentView('discover');
           }}

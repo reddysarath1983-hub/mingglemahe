@@ -75,14 +75,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </button>
         )}
 
-        <button
-          onClick={onOpenAdmin}
-          className="px-3 py-1.5 rounded-full bg-[#FF4B5C]/20 hover:bg-[#FF4B5C]/30 border border-[#FF4B5C]/40 text-[#ffb3b3] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg backdrop-blur-md"
-          title="Registrar Admin Access (Passcode 3000)"
-        >
-          <span className="material-symbols-outlined text-sm text-[#FF4B5C]">lock</span>
-          <span>ADMIN (3000)</span>
-        </button>
       </div>
 
       {/* Ambient Background Glows */}
@@ -196,10 +188,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
 
         {/* Verification Requirements Footer */}
-        <div className="mt-auto pt-4 border-t border-[#5b4040]/30 w-full">
+        <div className="mt-auto pt-4 border-t border-[#5b4040]/30 w-full flex items-center justify-between">
           <p className="text-[10px] text-[#e3bebd] opacity-75 uppercase tracking-widest font-semibold">
             18+ ONLY | STUDENTS ONLY • PRIVATE • VERIFIED ACCESS
           </p>
+          {onOpenAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="text-[#e3bebd]/40 hover:text-white transition-colors cursor-pointer p-1"
+              title="Admin Authentication"
+            >
+              <span className="material-symbols-outlined text-xs">lock</span>
+            </button>
+          )}
         </div>
       </main>
 

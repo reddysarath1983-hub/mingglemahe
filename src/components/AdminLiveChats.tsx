@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 
 export const AdminLiveChats = () => {
   const [chats, setChats] = useState<any[]>([]);
@@ -9,39 +8,136 @@ export const AdminLiveChats = () => {
   const [inputText, setInputText] = useState('');
 
   useEffect(() => {
-    if (!db) return;
-    const q = query(collection(db, 'chats'), orderBy('updatedAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setChats(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
+    const fetchChats = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chats')
+          .select('*')
+          .order('updated_at', { ascending: false });
+
+        if (!error && data) {
+          setChats(data.map((c: any) => ({
+            id: c.id,
+            userName: c.user_name || 'Student',
+            studentName: c.student_name || 'Match',
+            studentId: c.student_id,
+          })));
+        }
+      } catch (err) {
+        console.warn("Supabase fetch chats warning:", err);
+      }
+    };
+
+    fetchChats();
+
+    const channel = supabase
+      .channel('admin_chats_list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
+        fetchChats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
-    if (!db || !selectedChat) return;
-    const q = query(collection(db, 'chats', selectedChat.id, 'messages'), orderBy('timestamp', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
+    if (!selectedChat) return;
+
+    const fetchMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('match_id', selectedChat.id)
+          .order('created_at', { ascending: true });
+
+        if (!error && data) {
+          setMessages(data.map((msg: any) => ({
+            id: msg.id,
+            text: msg.text,
+            isUser: msg.is_user,
+            senderId: msg.sender_id,
+            timestamp: msg.created_at,
+          })));
+        }
+      } catch (err) {
+        console.warn("Supabase fetch messages warning:", err);
+      }
+    };
+
+    fetchMessages();
+
+    const channel = supabase
+      .channel(`admin_chat_${selectedChat.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `match_id=eq.${selectedChat.id}` }, (payload) => {
+        const msg = payload.new;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          const hasTemp = prev.some((m) => m.text === msg.text && m.isUser === msg.is_user && String(m.id).startsWith('msg-'));
+          if (hasTemp) {
+            return prev.map((m) =>
+              m.text === msg.text && m.isUser === msg.is_user && String(m.id).startsWith('msg-')
+                ? {
+                    id: msg.id,
+                    text: msg.text,
+                    isUser: msg.is_user,
+                    senderId: msg.sender_id,
+                    timestamp: msg.created_at,
+                  }
+                : m
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: msg.id,
+              text: msg.text,
+              isUser: msg.is_user,
+              senderId: msg.sender_id,
+              timestamp: msg.created_at,
+            },
+          ];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedChat]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !selectedChat || !db) return;
-    
-    await addDoc(collection(db, 'chats', selectedChat.id, 'messages'), {
-      text: inputText,
-      senderId: selectedChat.studentId, // Sending AS Bhavya or Pragya
-      isUser: false, // The profile is sending it, not the "user"
-      timestamp: serverTimestamp()
-    });
-    
-    await updateDoc(doc(db, 'chats', selectedChat.id), {
-      updatedAt: serverTimestamp()
-    });
-    
+    if (!inputText.trim() || !selectedChat) return;
+
+    const msgText = inputText;
     setInputText('');
+
+    const localMsg = {
+      id: `msg-${Date.now()}`,
+      text: msgText,
+      senderId: selectedChat.studentId,
+      isUser: false,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, localMsg]);
+
+    try {
+      await supabase.from('chat_messages').insert([
+        {
+          match_id: selectedChat.id,
+          text: msgText,
+          sender_id: selectedChat.studentId,
+          is_user: false,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } catch (err) {
+      console.warn("Supabase chat insert warning:", err);
+    }
   };
 
   return (

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ASSETS } from '../data/studentProfiles';
 import { AdminActivity, AdminStats, ApprovedCredential } from '../types';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import { AdminLiveChats } from './AdminLiveChats';
 
 interface AdminPanelProps {
@@ -36,41 +35,60 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!db) return;
-    const q = query(collection(db, "pending_registrations"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fbActivities: AdminActivity[] = snapshot.docs
-        .sort((a, b) => {
-          const timeA = a.data().createdAt?.toMillis?.() || a.data().createdAt || 0;
-          const timeB = b.data().createdAt?.toMillis?.() || b.data().createdAt || 0;
-          return timeB - timeA;
-        })
-        .map(docSnap => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          userName: data.studentName || 'Unknown Student',
-          action: `Campus Pass Payment Screenshot Uploaded (${data.amount || '₹6.69'})`,
-          status: data.status === 'approved' ? 'Completed' : (data.status === 'rejected' ? 'Investigation Required' : 'Pending Review'),
-          time: 'Just now',
-          avatarUrl: ASSETS.userAvatar,
-          paymentDetails: {
-            upiNumber: 'mingle.manipal@okaxis',
-            transactionRef: data.transactionRef || 'N/A',
-            amount: data.amount || '₹6.69',
-            screenshotUrl: data.screenshotUrl || '',
-            studentPhoneNumber: data.phoneNumber || '',
-            studentEmail: data.email || '',
-          },
-          assignedCredential: data.loginId ? { loginId: data.loginId, passcode: data.passcode } : undefined
-        };
-      });
-      setActivities(fbActivities);
-    }, (error) => {
-      console.error("Firebase listen error:", error);
-    });
+    const fetchRegistrations = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('pending_registrations')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-    return () => unsubscribe();
+        if (!error && data && data.length > 0) {
+          const spActivities: AdminActivity[] = data.map((item: any) => ({
+            id: item.id || `act-${item.phone_number || Date.now()}`,
+            userName: item.student_name || item.studentName || 'Unknown Student',
+            action: `Campus Pass Payment Screenshot Uploaded (${item.amount || '₹6.69'})`,
+            status: item.status === 'approved' ? 'Completed' : (item.status === 'rejected' ? 'Investigation Required' : 'Pending Review'),
+            time: 'Just now',
+            avatarUrl: ASSETS.userAvatar,
+            paymentDetails: {
+              upiNumber: 'mingle.manipal@okaxis',
+              transactionRef: item.transaction_ref || item.transactionRef || 'N/A',
+              amount: item.amount || '₹6.69',
+              screenshotUrl: item.screenshot_url || item.screenshotUrl || '',
+              studentPhoneNumber: item.phone_number || item.phoneNumber || '',
+              studentEmail: item.email || '',
+            },
+            assignedCredential: (item.login_id || item.loginId) ? {
+              loginId: item.login_id || item.loginId,
+              passcode: item.passcode || ''
+            } : undefined
+          }));
+
+          // Merge with initial activities to retain defaults
+          setActivities((prev) => {
+            const map = new Map<string, AdminActivity>();
+            prev.forEach(a => map.set(a.id, a));
+            spActivities.forEach(a => map.set(a.id, a));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase fetch pending_registrations warning:", err);
+      }
+    };
+
+    fetchRegistrations();
+
+    const channel = supabase
+      .channel('pending_registrations_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_registrations' }, () => {
+        fetchRegistrations();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // When opening review item, prefill credentials
@@ -98,26 +116,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const finalPasscode = prodPasscode.trim() || `Campus#${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
-      const docRef = doc(db, "pending_registrations", id);
-      await updateDoc(docRef, {
+      await supabase.from('pending_registrations').update({
         status: 'approved',
-        loginId: finalLoginId,
+        login_id: finalLoginId,
         passcode: finalPasscode,
-      });
-      
+      }).eq('id', id);
+
       const act = activities.find(a => a.id === id);
       if (act) {
-        await setDoc(doc(db, "approved_credentials", id), {
-          studentName: act.userName,
-          studentPhoneNumber: act.paymentDetails?.studentPhoneNumber || '',
-          studentEmail: act.paymentDetails?.studentEmail || '',
-          loginId: finalLoginId,
-          passcode: finalPasscode,
-          status: 'Approved'
-        });
+        await supabase.from('approved_credentials').insert([
+          {
+            student_name: act.userName,
+            student_phone_number: act.paymentDetails?.studentPhoneNumber || '',
+            student_email: act.paymentDetails?.studentEmail || '',
+            login_id: finalLoginId,
+            passcode: finalPasscode,
+            status: 'Approved'
+          }
+        ]);
       }
     } catch (err) {
-      console.error("Firebase update error:", err);
+      console.warn("Supabase update error:", err);
     }
 
     if (onApprovePaymentWithCredential) {
@@ -139,8 +158,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleReject = async (id: string) => {
     try {
-      const docRef = doc(db, "pending_registrations", id);
-      await updateDoc(docRef, { status: 'rejected' });
+      await supabase.from('pending_registrations').update({ status: 'rejected' }).eq('id', id);
     } catch (err) {
       console.error(err);
     }
@@ -520,11 +538,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 {/* Status or Approval Buttons */}
                 {selectedReviewItem.status === 'Completed' ? (
-                  <div className="p-3 rounded-xl bg-[#5edda8]/15 border border-[#5edda8]/30 text-center text-xs text-[#5edda8] font-bold space-y-1">
-                    <p>✓ Payment Approved & Credentials Shared to Student!</p>
+                  <div className="p-3.5 rounded-xl bg-[#5edda8]/15 border border-[#5edda8]/30 text-center text-xs text-[#5edda8] font-bold space-y-2">
+                    <p>✓ Payment Approved & Credentials Saved in Supabase!</p>
                     <p className="text-white font-mono text-[11px]">
                       ID: {selectedReviewItem.assignedCredential?.loginId || prodLoginId} | Pass: {selectedReviewItem.assignedCredential?.passcode || prodPasscode}
                     </p>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const text = `Hi ${selectedReviewItem.userName}, your Mingle@Manipal login credentials have been approved!\nLogin ID: ${selectedReviewItem.assignedCredential?.loginId || prodLoginId}\nPasscode: ${selectedReviewItem.assignedCredential?.passcode || prodPasscode}`;
+                          navigator.clipboard.writeText(text);
+                          alert('Credentials text copied to clipboard!');
+                        }}
+                        className="flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-xs">content_copy</span>
+                        <span>Copy Text</span>
+                      </button>
+                      {selectedReviewItem.paymentDetails?.studentPhoneNumber && (
+                        <a
+                          href={`https://wa.me/91${selectedReviewItem.paymentDetails.studentPhoneNumber}?text=${encodeURIComponent(
+                            `Hi ${selectedReviewItem.userName}, your Mingle@Manipal login credentials have been approved!\nLogin ID: ${selectedReviewItem.assignedCredential?.loginId || prodLoginId}\nPasscode: ${selectedReviewItem.assignedCredential?.passcode || prodPasscode}\nLog in here: http://localhost:3000`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 py-2 rounded-lg bg-[#25D366] text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1 hover:opacity-90 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-xs">send</span>
+                          <span>Send WhatsApp</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex gap-2 pt-2">

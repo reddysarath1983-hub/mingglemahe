@@ -5,6 +5,7 @@ interface OnboardingDetailsScreenProps {
   onSubmitDetails: (details: {
     fullName: string;
     phoneNumber: string;
+    regNumber?: string;
     email: string;
     major: string;
     year: string;
@@ -13,6 +14,8 @@ interface OnboardingDetailsScreenProps {
     quote: string;
     interests: string[];
     avatarUrl: string;
+    gender?: 'male' | 'female' | 'other';
+    lookingFor?: 'female' | 'male' | 'everyone';
   }) => void;
   onBackToSplash: () => void;
 }
@@ -23,7 +26,11 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
 }) => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [regNumber, setRegNumber] = useState('');
   const [email, setEmail] = useState('student@manipal.edu');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [lookingFor, setLookingFor] = useState<'female' | 'male' | 'everyone'>('female');
   const [major, setMajor] = useState('B.Tech Computer Science');
   const [year, setYear] = useState('2nd Year');
   const [campus, setCampus] = useState('MIT Manipal');
@@ -52,14 +59,24 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError(null);
+
     if (!fullName.trim() || !phoneNumber.trim()) {
       alert('Please fill in your Full Name and Phone Number.');
+      return;
+    }
+
+    const emailLower = email.trim().toLowerCase();
+    const isValidMAHE = emailLower.endsWith('@learner.manipal.edu') || emailLower.endsWith('@manipal.edu');
+    if (!isValidMAHE) {
+      setEmailError('Must be a valid MAHE institutional email (@learner.manipal.edu or @manipal.edu)');
       return;
     }
 
     onSubmitDetails({
       fullName,
       phoneNumber,
+      regNumber: regNumber || phoneNumber,
       email,
       major,
       year,
@@ -68,6 +85,8 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
       quote,
       interests: selectedInterests,
       avatarUrl,
+      gender,
+      lookingFor,
     });
   };
 
@@ -109,7 +128,7 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
               <p className="text-[11px] text-[#e3bebd]/80 font-medium">Tap photo to upload profile picture</p>
             </div>
 
-            {/* Name and Reg Number */}
+            {/* Name, Phone, and Student Registration Number */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Full Name *</label>
@@ -136,16 +155,71 @@ export const OnboardingDetailsScreen: React.FC<OnboardingDetailsScreenProps> = (
               </div>
             </div>
 
-            {/* Institutional Email */}
-            <div>
-              <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Manipal Email (@manipal.edu)</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-[#FF4B5C]"
-              />
+            {/* Registration Number & Institutional Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Student Registration No.</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 220911048"
+                  value={regNumber}
+                  onChange={(e) => setRegNumber(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-[#aa8988] focus:outline-none focus:border-[#FF4B5C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">MAHE Email (@learner.manipal.edu / @manipal.edu) *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. alex.s@learner.manipal.edu"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-white/5 border ${
+                    emailError ? 'border-red-500' : 'border-white/10'
+                  } text-xs text-white focus:outline-none focus:border-[#FF4B5C]`}
+                />
+              </div>
+            </div>
+
+            {emailError && (
+              <div className="p-2.5 rounded-xl bg-[#FF4B5C]/20 border border-[#FF4B5C]/50 text-xs text-[#ffb3b3] font-semibold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                <span>{emailError}</span>
+              </div>
+            )}
+
+            {/* Gender and Match Preference */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">I am a *</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#2a1718] border border-white/10 text-xs text-white focus:outline-none focus:border-[#FF4B5C]"
+                >
+                  <option value="male">Male 👨</option>
+                  <option value="female">Female 👩</option>
+                  <option value="other">Non-Binary / Other ✨</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#e3bebd] mb-1">Looking to meet *</label>
+                <select
+                  value={lookingFor}
+                  onChange={(e) => setLookingFor(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#2a1718] border border-white/10 text-xs text-white focus:outline-none focus:border-[#FF4B5C]"
+                >
+                  <option value="female">Females 👩</option>
+                  <option value="male">Males 👨</option>
+                  <option value="everyone">Everyone ✨</option>
+                </select>
+              </div>
             </div>
 
             {/* Major & Year */}

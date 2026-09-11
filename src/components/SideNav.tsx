@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ViewScreen } from '../types';
 
 interface SideNavProps {
@@ -12,95 +12,93 @@ export const SideNav: React.FC<SideNavProps> = ({
   setCurrentView,
   unreadMessagesCount,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (currentView === 'splash' || currentView === 'verify' || currentView === 'admin' || currentView === 'onboarding-details' || currentView === 'payment-step' || currentView === 'awaiting-approval') {
+  if (
+    currentView === 'splash' ||
+    currentView === 'verify' ||
+    currentView === 'admin' ||
+    currentView === 'onboarding-details' ||
+    currentView === 'payment-step' ||
+    currentView === 'awaiting-approval'
+  ) {
     return null;
   }
 
+  const navItems = [
+    { id: 'discover', icon: 'explore', label: 'Discover' },
+    { id: 'crush', icon: 'local_fire_department', label: 'Crush' },
+    { id: 'campus-pass', icon: 'workspace_premium', label: 'Pass' },
+    { id: 'chats', icon: 'chat_bubble', label: 'Chats', badge: unreadMessagesCount },
+    { id: 'profile', icon: 'person', label: 'Profile' },
+  ];
+
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-[18px] left-4 z-50 p-2 rounded-full glass-panel border border-white/20 text-[#f9dcdb] shadow-lg cursor-pointer flex items-center justify-center bg-black/40 backdrop-blur-md"
-      >
-        <span className="material-symbols-outlined">{isOpen ? 'close' : 'menu'}</span>
-      </button>
+      {/* MOBILE BOTTOM NAVIGATION DOCK (visible on screens < md) */}
+      <nav className="md:hidden fixed bottom-3 inset-x-3 max-w-md mx-auto z-50 bg-[#170a0c]/90 backdrop-blur-2xl border border-white/20 rounded-full flex justify-around items-center px-2 py-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
+        {navItems.map((item) => {
+          const isActive =
+            currentView === item.id ||
+            (item.id === 'chats' && currentView === 'chat-detail');
 
-      <nav className={`fixed top-0 bottom-0 left-4 sm:left-6 md:left-8 z-40 flex flex-col justify-center items-center py-4 pointer-events-none transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-[150%] md:translate-x-0'}`}>
-        <div className="w-16 sm:w-[72px] h-[60vh] min-h-[350px] max-h-[500px] rounded-full bg-black/80 md:bg-black/40 backdrop-blur-xl border border-white/15 shadow-2xl flex flex-col justify-around items-center py-6 px-2 pointer-events-auto">
-        {/* Discover / Swipe */}
-        <button
-          onClick={() => { setCurrentView('discover'); setIsOpen(false); }}
-          className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
-            currentView === 'discover'
-              ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
-              : 'text-[#e3bebd] hover:bg-white/10'
-          }`}
-          title="Discover Students"
-        >
-          <span className="material-symbols-outlined text-xl">explore</span>
-        </button>
+          return (
+            <button
+              key={item.id}
+              onClick={() => setCurrentView(item.id as ViewScreen)}
+              className={`relative flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 cursor-pointer ${
+                isActive
+                  ? 'bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white shadow-lg shadow-[#FF4B5C]/30 scale-105 px-3.5'
+                  : 'text-[#e3bebd]/80 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              {isActive && (
+                <span className="text-[9px] font-extrabold uppercase tracking-wider leading-none mt-0.5">
+                  {item.label}
+                </span>
+              )}
 
-        {/* Secret Crush Feature */}
-        <button
-          onClick={() => { setCurrentView('crush'); setIsOpen(false); }}
-          className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
-            currentView === 'crush'
-              ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
-              : 'text-[#e3bebd] hover:bg-white/10'
-          }`}
-          title="Campus Secret Crush"
-        >
-          <span className="material-symbols-outlined text-xl">local_fire_department</span>
-        </button>
+              {item.badge && item.badge > 0 ? (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF4B5C] text-white text-[9px] font-bold flex items-center justify-center border border-[#1e0f10]">
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
 
-        {/* Campus Pass Upgrade */}
-        <button
-          onClick={() => { setCurrentView('campus-pass'); setIsOpen(false); }}
-          className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
-            currentView === 'campus-pass'
-              ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
-              : 'text-[#e3bebd] hover:bg-white/10'
-          }`}
-          title="Campus Pass"
-        >
-          <span className="material-symbols-outlined text-xl">workspace_premium</span>
-        </button>
+      {/* DESKTOP SIDE FLOATING NAVIGATION BAR (visible on screens >= md) */}
+      <nav className="hidden md:flex fixed top-0 bottom-0 left-6 z-40 flex-col justify-center items-center py-4 pointer-events-none">
+        <div className="w-[72px] h-[480px] rounded-full bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl flex flex-col justify-around items-center py-6 px-2 pointer-events-auto">
+          {navItems.map((item) => {
+            const isActive =
+              currentView === item.id ||
+              (item.id === 'chats' && currentView === 'chat-detail');
 
-        {/* Chats & Messages */}
-        <button
-          onClick={() => { setCurrentView('chats'); setIsOpen(false); }}
-          className={`relative flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
-            currentView === 'chats' || currentView === 'chat-detail'
-              ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
-              : 'text-[#e3bebd] hover:bg-white/10'
-          }`}
-          title="Messages"
-        >
-          <span className="material-symbols-outlined text-xl">chat_bubble</span>
-          {unreadMessagesCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#ff5260] text-white text-[10px] font-bold flex items-center justify-center border border-[#1e0f10]">
-              {unreadMessagesCount}
-            </span>
-          )}
-        </button>
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id as ViewScreen)}
+                className={`relative flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer group ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white shadow-lg shadow-[#FF4B5C]/40 scale-110'
+                    : 'text-[#e3bebd] hover:bg-white/15'
+                }`}
+                title={item.label}
+              >
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
 
-        {/* Profile */}
-        <button
-          onClick={() => { setCurrentView('profile'); setIsOpen(false); }}
-          className={`flex items-center justify-center p-3 rounded-full transition-all duration-200 cursor-pointer ${
-            currentView === 'profile'
-              ? 'bg-gradient-to-r from-[#ff5260] to-[#55329e] text-white shadow-lg scale-105'
-              : 'text-[#e3bebd] hover:bg-white/10'
-          }`}
-          title="My Profile"
-        >
-          <span className="material-symbols-outlined text-xl">person</span>
-        </button>
-      </div>
-    </nav>
+                {item.badge && item.badge > 0 ? (
+                  <span className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-[#FF4B5C] text-white text-[10px] font-bold flex items-center justify-center border border-[#1e0f10]">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 };
+

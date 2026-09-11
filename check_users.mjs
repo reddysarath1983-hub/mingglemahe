@@ -1,33 +1,30 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { createClient } from '@supabase/supabase-js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoNEcFb7vwghr_x8BkQGOHP3Q49FiEF3M",
-  authDomain: "manipal-6615f.firebaseapp.com",
-  projectId: "manipal-6615f",
-  storageBucket: "manipal-6615f.firebasestorage.app",
-  messagingSenderId: "1096582879957",
-  appId: "1:1096582879957:web:a383ea0aa24851d3a1605c",
-  measurementId: "G-YT79QE1KST"
-};
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://eetzyuvtzjswzqrqoyuh.supabase.co';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_qZEla6P3oH4Rn9ELDv2lLA_YsmNhJI3';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function check() {
   try {
-    const snapshot = await getDocs(collection(db, "pending_registrations"));
-    console.log("--- Registered Users ---");
-    let count = 0;
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      console.log(`Name: ${data.studentName}, Phone: ${data.phoneNumber}, Status: ${data.status}`);
-      count++;
-    });
-    console.log(`Total Registrations: ${count}`);
+    const { data: profiles, error: pErr } = await supabase.from('user_profiles').select('*');
+    console.log("=== USER PROFILES IN SUPABASE ===");
+    if (pErr) console.log("user_profiles Error:", pErr.message);
+    else console.log(`Count: ${profiles?.length || 0}`, profiles);
+
+    const { data: creds, error: cErr } = await supabase.from('approved_credentials').select('*');
+    console.log("=== APPROVED CREDENTIALS IN SUPABASE ===");
+    if (cErr) console.log("approved_credentials Error:", cErr.message);
+    else console.log(`Count: ${creds?.length || 0}`, creds);
+
+    const { data: pending, error: rErr } = await supabase.from('pending_registrations').select('*');
+    console.log("=== PENDING REGISTRATIONS IN SUPABASE ===");
+    if (rErr) console.log("pending_registrations Error:", rErr.message);
+    else console.log(`Count: ${pending?.length || 0}`, pending);
+
   } catch(e) {
     console.error(e);
   }
-  process.exit(0);
 }
 check();
+

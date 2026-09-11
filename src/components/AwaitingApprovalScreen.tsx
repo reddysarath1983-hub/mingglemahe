@@ -149,13 +149,6 @@ export const AwaitingApprovalScreen: React.FC<AwaitingApprovalScreenProps> = ({
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">
-                <button
-                  onClick={onOpenAdmin}
-                  className="w-full py-3 rounded-xl bg-[#FF4B5C]/20 hover:bg-[#FF4B5C]/30 border border-[#FF4B5C]/40 text-[#ffb3b3] font-bold text-xs uppercase tracking-wider cursor-pointer transition-all flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">lock</span>
-                  <span>OPEN REGISTRAR ADMIN (PASSCODE 3000)</span>
-                </button>
 
                 <button
                   onClick={() => setShowDirectLoginForm(!showDirectLoginForm)}

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { ApprovedCredential } from '../types';
+import { supabase } from '../supabase';
 
 interface StudentLoginModalProps {
   onClose: () => void;
   approvedCredentials: ApprovedCredential[];
-  onLoginSuccess: (userCredentials: { name: string; loginId: string }) => void;
+  onLoginSuccess: (userCredentials: ApprovedCredential) => void;
   onNavigateToOnboarding: () => void;
 }
 
-// Exactly 2 default pre-approved logins
+// Default pre-approved logins with full profile preferences
 export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
   {
     id: 'default-1',
@@ -21,6 +22,13 @@ export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
     status: 'Approved',
     approvedAt: 'Official Default',
     utrRef: 'UTR-DEFAULT-8812',
+    gender: 'female',
+    lookingFor: 'male',
+    major: 'B.A Media & Communication',
+    campus: 'SOC Manipal',
+    bio: 'Film student, portrait photographer, and sunset seeker at End Point. Looking for music lovers and coffee date companions!',
+    quote: 'Capturing candid Manipal moments 📸',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'default-2',
@@ -33,6 +41,13 @@ export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
     status: 'Approved',
     approvedAt: 'Official Default',
     utrRef: 'UTR-DEFAULT-9923',
+    gender: 'male',
+    lookingFor: 'female',
+    major: 'B.Tech Computer Science',
+    campus: 'MIT Manipal',
+    bio: 'Tech builder, guitarist, and weekend road tripper. Looking for a genuine co-pilot for Malpe beach sunsets!',
+    quote: 'Coding by day, acoustic jams by night 🎸',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
   },
 ];
 
@@ -45,34 +60,115 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
   const [loginInput, setLoginInput] = useState('');
   const [passcode, setPasscode] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Combine default 2 credentials with any admin-approved ones from backend
+  // Combine default credentials with any admin-approved ones from backend
   const allValidCredentials = [...DEFAULT_MANIPAL_CREDENTIALS, ...approvedCredentials];
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setIsSubmitting(true);
 
-    const match = allValidCredentials.find((cred) => {
-      const matchIdOrName =
-        cred.loginId.trim().toLowerCase() === loginInput.trim().toLowerCase() ||
-        cred.studentName.trim().toLowerCase() === loginInput.trim().toLowerCase() ||
-        cred.studentPhoneNumber.trim() === loginInput.trim();
+    const cleanInput = loginInput.trim().toLowerCase();
+    const cleanPass = passcode.trim();
 
-      const matchPass = cred.passcode.trim() === passcode.trim();
-      return matchIdOrName && matchPass;
-    });
+    try {
+      // 1. Try local memory state search
+      let match = allValidCredentials.find((cred) => {
+        const matchId = cred.loginId.trim().toLowerCase() === cleanInput;
+        const matchName = cred.studentName.trim().toLowerCase() === cleanInput;
+        const matchPhone = cred.studentPhoneNumber.trim() === cleanInput;
+        const matchEmail = cred.studentEmail?.trim().toLowerCase() === cleanInput;
 
-    if (match) {
-      if (match.status === 'Approved') {
-        onLoginSuccess({ name: match.studentName, loginId: match.loginId });
-      } else {
-        setErrorMsg('Your account is still pending Registrar Admin verification.');
+        const matchPass = cred.passcode.trim() === cleanPass;
+        return (matchId || matchName || matchPhone || matchEmail) && matchPass;
+      });
+
+      // 2. If not found in memory, perform live Supabase search on approved_credentials
+      if (!match) {
+        const { data: dbCreds } = await supabase.from('approved_credentials').select('*');
+        if (dbCreds && dbCreds.length > 0) {
+          const foundDb = dbCreds.find((item: any) => {
+            const loginId = (item.login_id || item.loginId || '').trim().toLowerCase();
+            const name = (item.student_name || item.studentName || '').trim().toLowerCase();
+            const phone = (item.student_phone_number || item.studentPhoneNumber || '').trim();
+            const email = (item.student_email || item.studentEmail || '').trim().toLowerCase();
+            const itemPass = (item.passcode || '').trim();
+
+            const inputMatches = loginId === cleanInput || name === cleanInput || phone === cleanInput || email === cleanInput;
+            return inputMatches && itemPass === cleanPass;
+          });
+
+          if (foundDb) {
+            match = {
+              id: foundDb.id || `cred-${Date.now()}`,
+              studentId: foundDb.student_id || foundDb.id,
+              studentName: foundDb.student_name || 'Student',
+              studentEmail: foundDb.student_email || '',
+              studentPhoneNumber: foundDb.student_phone_number || '',
+              studentRegNo: foundDb.student_reg_no || foundDb.student_phone_number || '',
+              loginId: foundDb.login_id || '',
+              passcode: foundDb.passcode || '',
+              status: foundDb.status || 'Approved',
+              approvedAt: foundDb.approved_at || 'Just now',
+              utrRef: foundDb.utr_ref || '',
+              isVerifiedStudent: true,
+            };
+          }
+        }
       }
-    } else {
-      setErrorMsg(
-        'Invalid Credentials! Only 2 default logins are active. Other students must complete ₹6.69 payment & receive Admin approval.'
-      );
+
+      // 3. If still not found, check pending_registrations table in Supabase
+      if (!match) {
+        const { data: dbRegs } = await supabase.from('pending_registrations').select('*');
+        if (dbRegs && dbRegs.length > 0) {
+          const foundReg = dbRegs.find((item: any) => {
+            const loginId = (item.login_id || item.loginId || '').trim().toLowerCase();
+            const name = (item.student_name || item.studentName || '').trim().toLowerCase();
+            const phone = (item.phone_number || item.phoneNumber || '').trim();
+            const email = (item.email || '').trim().toLowerCase();
+            const itemPass = (item.passcode || '').trim();
+
+            const inputMatches = loginId === cleanInput || name === cleanInput || phone === cleanInput || email === cleanInput;
+            return inputMatches && itemPass === cleanPass;
+          });
+
+          if (foundReg) {
+            match = {
+              id: `cred-${foundReg.id}`,
+              studentId: foundReg.id,
+              studentName: foundReg.student_name || 'Student',
+              studentEmail: foundReg.email || '',
+              studentPhoneNumber: foundReg.phone_number || '',
+              studentRegNo: foundReg.phone_number || '',
+              loginId: foundReg.login_id || '',
+              passcode: foundReg.passcode || '',
+              status: foundReg.status === 'approved' ? 'Approved' : 'Pending',
+              approvedAt: 'Just now',
+              utrRef: foundReg.transaction_ref || '',
+              isVerifiedStudent: true,
+            };
+          }
+        }
+      }
+
+      if (match) {
+        if (match.status === 'Approved' || match.status === 'approved' as any) {
+          onLoginSuccess(match);
+        } else {
+          setErrorMsg('Your account is still pending Registrar Admin verification.');
+        }
+      } else {
+        setErrorMsg(
+          'Invalid Login ID, Name, or Passcode! Please check credentials issued by Admin or select from active logins below.'
+        );
+      }
+    } catch (err) {
+      console.warn("Login submit warning:", err);
+      setErrorMsg('Invalid Credentials! Please try again or check active logins.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,7 +180,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#120708]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="glass-panel rounded-3xl p-6 border border-white/20 shadow-2xl max-w-sm w-full relative space-y-5 animate-in zoom-in-95 text-left">
+      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-white/20 shadow-2xl max-w-sm w-full relative space-y-4 sm:space-y-5 animate-in zoom-in-95 text-left max-h-[92vh] overflow-y-auto">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -100,7 +196,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
           </div>
           <h2 className="text-xl font-extrabold text-white tracking-tight">Manipal Student Login</h2>
           <p className="text-xs text-[#e3bebd] mt-0.5">
-            Enter your Admin-issued Login ID/Name & Passcode
+            Enter your Admin-issued Login ID, Name, or Phone & Passcode
           </p>
         </div>
 
@@ -124,12 +220,12 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
 
           <div>
             <label className="block text-[11px] font-bold text-[#e3bebd] uppercase tracking-wider mb-1">
-              Manipal Name or Login ID
+              Manipal Name, Phone, or Login ID
             </label>
             <input
               type="text"
               required
-              placeholder="e.g., MPL-2026-8812 or Anya Sharma"
+              placeholder="e.g., MPL-2026-8812, Sarath Reddy, or Anya Sharma"
               value={loginInput}
               onChange={(e) => setLoginInput(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-white placeholder-[#aa8988] focus:border-[#FF4B5C] focus:outline-none transition-colors"
@@ -143,7 +239,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <input
               type="password"
               required
-              placeholder="Enter 4+ char passcode"
+              placeholder="Enter passcode (e.g. Manipal#2026 or Campus#3000)"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-white placeholder-[#aa8988] focus:border-[#FF4B5C] focus:outline-none transition-colors font-mono"
@@ -152,22 +248,23 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF4B5C]/20 hover:opacity-90 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+            disabled={isSubmitting}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#FF4B5C]/20 hover:opacity-90 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-base">login</span>
-            <span>LOG IN TO PORTAL</span>
+            <span>{isSubmitting ? 'VERIFYING...' : 'LOG IN TO PORTAL'}</span>
           </button>
         </form>
 
-        {/* DEFAULT LOGINS QUICK SELECT BOX */}
+        {/* ACTIVE LOGINS QUICK SELECT BOX */}
         <div className="pt-2 border-t border-white/10 space-y-2">
           <div className="flex justify-between items-center text-[10px] font-bold text-[#e3bebd] uppercase tracking-wider">
-            <span>2 ACTIVE DEFAULT LOGINS</span>
+            <span>{allValidCredentials.length} ACTIVE MANIPAL LOGINS</span>
             <span className="text-[#5edda8]">PRE-APPROVED</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-left">
-            {DEFAULT_MANIPAL_CREDENTIALS.map((cred) => (
+          <div className="grid grid-cols-2 gap-2 text-left max-h-36 overflow-y-auto pr-1">
+            {allValidCredentials.map((cred) => (
               <button
                 key={cred.id}
                 type="button"
@@ -196,3 +293,4 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
     </div>
   );
 };
+

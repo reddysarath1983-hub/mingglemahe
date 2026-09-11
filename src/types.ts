@@ -17,6 +17,10 @@ export interface StudentProfile {
   isOnline?: boolean;
   phoneNumber?: string;
   email?: string;
+  regNumber?: string;
+  isVerifiedStudent?: boolean;
+  gender?: 'male' | 'female' | 'other';
+  lookingFor?: 'female' | 'male' | 'everyone';
 }
 
 export interface PaymentSubmission {
@@ -82,11 +86,20 @@ export interface ApprovedCredential {
   studentName: string;
   studentEmail: string;
   studentPhoneNumber: string;
+  studentRegNo?: string;
   loginId: string;
   passcode: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   approvedAt?: string;
   utrRef?: string;
+  isVerifiedStudent?: boolean;
+  gender?: 'male' | 'female' | 'other';
+  lookingFor?: 'female' | 'male' | 'everyone';
+  avatarUrl?: string;
+  major?: string;
+  campus?: string;
+  bio?: string;
+  quote?: string;
 }
 
 export interface AdminActivity {

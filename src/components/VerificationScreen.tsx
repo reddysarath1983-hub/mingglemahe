@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 
 interface VerificationScreenProps {
+  studentEmail?: string;
   onVerifiedContinue: () => void;
   onOpenTerms: () => void;
   onOpenGuidelines: () => void;
 }
 
 export const VerificationScreen: React.FC<VerificationScreenProps> = ({
+  studentEmail: propEmail,
   onVerifiedContinue,
   onOpenTerms,
   onOpenGuidelines,
 }) => {
   const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
-  const [studentEmail, setStudentEmail] = useState('student@manipal.edu');
+  const studentEmail = propEmail || 'student@learner.manipal.edu';
 
   return (
     <div className="bg-[#1e0f10] text-[#f9dcdb] min-h-screen relative overflow-hidden flex flex-col items-center justify-center font-sans antialiased p-5">
@@ -108,7 +110,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
                 : 'bg-[#423030]/60 opacity-50 cursor-not-allowed border border-[#5b4040]'
             }`}
           >
-            CONTINUE TO PROFILE SETUP
+            CONTINUE TO PAYMENT (₹6.69) ➔
           </button>
         </main>
       </div>

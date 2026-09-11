@@ -105,8 +105,8 @@ export const AwaitingApprovalScreen: React.FC<AwaitingApprovalScreenProps> = ({
     try {
       // 1. Check in-memory credentials (defaults + props + live state)
       let found = allCredentials.find((c) => {
-        const matchId = c.loginId.trim().toLowerCase() === cleanInput;
-        const matchName = c.studentName.trim().toLowerCase() === cleanInput;
+        const matchId = (c.loginId || '').trim().toLowerCase() === cleanInput;
+        const matchName = (c.studentName || '').trim().toLowerCase() === cleanInput;
         const matchPhone = (c.studentPhoneNumber || '').trim() === cleanInput || (c.studentRegNo || '').trim() === cleanInput;
         const matchEmail = (c.studentEmail || '').trim().toLowerCase() === cleanInput;
         const matchPass = (c.passcode || '').trim() === cleanPass;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ApprovedCredential } from '../types';
 import { supabase } from '../supabase';
 
@@ -62,8 +62,44 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Combine default credentials with any admin-approved ones from backend
-  const allValidCredentials = [...DEFAULT_MANIPAL_CREDENTIALS, ...approvedCredentials];
+  const [dbLiveCredentials, setDbLiveCredentials] = useState<ApprovedCredential[]>([]);
+
+  // Fetch all live approved credentials from Supabase DB on mount
+  useEffect(() => {
+    const fetchLiveDbCreds = async () => {
+      try {
+        const { data, error } = await supabase.from('approved_credentials').select('*');
+        if (!error && data && data.length > 0) {
+          const mapped: ApprovedCredential[] = data.map((item: any) => ({
+            id: item.id || `cred-${Date.now()}`,
+            studentId: item.student_id || item.studentId || item.id,
+            studentName: item.student_name || item.studentName || 'Student',
+            studentEmail: item.student_email || item.studentEmail || '',
+            studentPhoneNumber: item.student_phone_number || item.studentPhoneNumber || '',
+            studentRegNo: item.student_reg_no || item.studentRegNo || item.student_phone_number || '',
+            loginId: item.login_id || item.loginId || '',
+            passcode: item.passcode || '',
+            status: item.status || 'Approved',
+            approvedAt: item.approved_at || item.approvedAt || 'Just now',
+            utrRef: item.utr_ref || item.utrRef || '',
+            isVerifiedStudent: true,
+          }));
+          setDbLiveCredentials(mapped);
+        }
+      } catch (err) {
+        console.warn("StudentLoginModal fetch warning:", err);
+      }
+    };
+    fetchLiveDbCreds();
+  }, []);
+
+  // Combine default credentials with props and live DB credentials
+  const allValidCredentials = [...dbLiveCredentials, ...approvedCredentials, ...DEFAULT_MANIPAL_CREDENTIALS];
+
+  // Unique list by loginId or studentName
+  const uniqueCredentials = Array.from(
+    new Map(allValidCredentials.map((c) => [c.loginId || c.studentName || c.id, c])).values()
+  );
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,14 +110,14 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
     const cleanPass = passcode.trim();
 
     try {
-      // 1. Try local memory state search
-      let match = allValidCredentials.find((cred) => {
-        const matchId = cred.loginId.trim().toLowerCase() === cleanInput;
-        const matchName = cred.studentName.trim().toLowerCase() === cleanInput;
-        const matchPhone = cred.studentPhoneNumber.trim() === cleanInput;
-        const matchEmail = cred.studentEmail?.trim().toLowerCase() === cleanInput;
+      // 1. Try local memory state search with safe string guards
+      let match = uniqueCredentials.find((cred) => {
+        const matchId = (cred.loginId || '').trim().toLowerCase() === cleanInput;
+        const matchName = (cred.studentName || '').trim().toLowerCase() === cleanInput;
+        const matchPhone = (cred.studentPhoneNumber || '').trim() === cleanInput || (cred.studentRegNo || '').trim() === cleanInput;
+        const matchEmail = (cred.studentEmail || '').trim().toLowerCase() === cleanInput;
 
-        const matchPass = cred.passcode.trim() === cleanPass;
+        const matchPass = (cred.passcode || '').trim() === cleanPass;
         return (matchId || matchName || matchPhone || matchEmail) && matchPass;
       });
 
@@ -154,7 +190,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
       }
 
       if (match) {
-        if (match.status === 'Approved' || match.status === 'approved' as any) {
+        if (match.status === 'Approved' || (match.status as string) === 'approved') {
           onLoginSuccess(match);
         } else {
           setErrorMsg('Your account is still pending Registrar Admin verification.');
@@ -259,12 +295,12 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
         {/* ACTIVE LOGINS QUICK SELECT BOX */}
         <div className="pt-2 border-t border-white/10 space-y-2">
           <div className="flex justify-between items-center text-[10px] font-bold text-[#e3bebd] uppercase tracking-wider">
-            <span>{allValidCredentials.length} ACTIVE MANIPAL LOGINS</span>
+            <span>{uniqueCredentials.length} ACTIVE MANIPAL LOGINS</span>
             <span className="text-[#5edda8]">PRE-APPROVED</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-left max-h-36 overflow-y-auto pr-1">
-            {allValidCredentials.map((cred) => (
+            {uniqueCredentials.map((cred) => (
               <button
                 key={cred.id}
                 type="button"

@@ -123,37 +123,90 @@ export default function App() {
 
     const fetchUserProfiles = async () => {
       try {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*');
+        const { data: profData } = await supabase.from('user_profiles').select('*');
+        const { data: regData } = await supabase.from('pending_registrations').select('*');
 
-        if (!error && data && data.length > 0) {
-          const dbProfiles: StudentProfile[] = data.map((item: any) => ({
-            id: item.phone_number || item.id || `profile-${Date.now()}`,
-            name: item.full_name || 'Manipal Student',
-            age: item.age || 21,
-            gender: item.gender || 'female',
-            lookingFor: item.looking_for || 'male',
-            major: item.major || 'Degree',
-            year: item.year || '3rd Year',
-            campus: item.campus || 'MIT Manipal',
-            quote: item.quote || 'Looking for great coffee and friends!',
-            bio: item.bio || 'Manipal student exploring campus life.',
-            interests: item.interests || ['Coffee', 'Music'],
-            verified: item.is_verified_student ?? true,
-            avatarUrl: item.avatar_url || ASSETS.userAvatar,
-            photos: [item.avatar_url || ASSETS.userAvatar],
-            phoneNumber: item.phone_number,
-            email: item.email,
-          }));
+        const dbProfilesMap = new Map<string, StudentProfile>();
 
-          setProfiles((prev) => {
-            const map = new Map<string, StudentProfile>();
-            prev.forEach(p => map.set(p.id, p));
-            dbProfiles.forEach(p => map.set(p.id, p));
-            return Array.from(map.values());
+        if (profData && profData.length > 0) {
+          profData.forEach((item: any) => {
+            const phone = item.phone_number || item.reg_number || item.id;
+            if (!phone) return;
+
+            let g = 'female';
+            if (item.gender) {
+              g = item.gender.toString().toLowerCase();
+            } else if (item.looking_for) {
+              g = item.looking_for.toString().toLowerCase() === 'male' ? 'female' : 'male';
+            }
+            if (g !== 'female' && g !== 'male') g = 'female';
+
+            let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
+
+            dbProfilesMap.set(phone, {
+              id: phone,
+              name: item.full_name || 'Manipal Student',
+              age: item.age || 21,
+              gender: g as any,
+              lookingFor: lf as any,
+              major: item.major || 'Degree',
+              year: item.year || '3rd Year',
+              campus: item.campus || 'MIT Manipal',
+              quote: item.quote || 'Looking for great coffee and friends!',
+              bio: item.bio || 'Manipal student exploring campus life.',
+              interests: item.interests || ['Coffee', 'Music'],
+              verified: item.is_verified_student ?? true,
+              avatarUrl: item.avatar_url || ASSETS.userAvatar,
+              photos: [item.avatar_url || ASSETS.userAvatar],
+              phoneNumber: item.phone_number,
+              email: item.email,
+            });
           });
         }
+
+        if (regData && regData.length > 0) {
+          regData.forEach((item: any) => {
+            const phone = item.phone_number || item.id;
+            if (!phone) return;
+            if (!dbProfilesMap.has(phone)) {
+              let g = 'female';
+              if (item.gender) {
+                g = item.gender.toString().toLowerCase();
+              } else if (item.looking_for) {
+                g = item.looking_for.toString().toLowerCase() === 'male' ? 'female' : 'male';
+              }
+              if (g !== 'female' && g !== 'male') g = 'female';
+
+              let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
+
+              dbProfilesMap.set(phone, {
+                id: phone,
+                name: item.student_name || 'Manipal Student',
+                age: 21,
+                gender: g as any,
+                lookingFor: lf as any,
+                major: item.major || 'Degree',
+                year: '2nd Year',
+                campus: 'MIT Manipal',
+                quote: 'Looking for coffee and genuine connections!',
+                bio: 'Manipal student looking for good company.',
+                interests: ['Coffee', 'Music'],
+                verified: true,
+                avatarUrl: item.avatar_url || ASSETS.userAvatar,
+                photos: [item.avatar_url || ASSETS.userAvatar],
+                phoneNumber: item.phone_number,
+                email: item.email,
+              });
+            }
+          });
+        }
+
+        setProfiles((prev) => {
+          const map = new Map<string, StudentProfile>();
+          prev.forEach(p => map.set(p.id, p));
+          dbProfilesMap.forEach((p, k) => map.set(k, p));
+          return Array.from(map.values());
+        });
       } catch (err) {
         console.warn("Supabase fetch user_profiles warning:", err);
       }
@@ -168,6 +221,9 @@ export default function App() {
         fetchApprovedCredentials();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => {
+        fetchUserProfiles();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_registrations' }, () => {
         fetchUserProfiles();
       })
       .subscribe();
@@ -196,6 +252,26 @@ export default function App() {
     loginId?: string;
   }) => {
     try {
+      let resolvedGender = details.gender;
+      let resolvedLookingFor = details.lookingFor;
+
+      if (!resolvedGender) {
+        try {
+          const { data: existing } = await supabase
+            .from('user_profiles')
+            .select('gender, looking_for')
+            .eq('phone_number', details.phoneNumber)
+            .maybeSingle();
+
+          if (existing && existing.gender) {
+            resolvedGender = existing.gender;
+            resolvedLookingFor = existing.looking_for;
+          }
+        } catch (e) {
+          console.warn("Fetch existing gender error:", e);
+        }
+      }
+
       const payloadFull: any = {
         full_name: details.fullName,
         phone_number: details.phoneNumber,
@@ -208,8 +284,8 @@ export default function App() {
         quote: details.quote || '',
         interests: details.interests || [],
         avatar_url: details.avatarUrl || '',
-        gender: details.gender || 'male',
-        looking_for: details.lookingFor || 'female',
+        gender: resolvedGender || 'female',
+        looking_for: resolvedLookingFor || 'male',
         login_id: details.loginId || '',
         verified: true,
         is_verified_student: details.isVerifiedStudent ?? true,
@@ -361,6 +437,17 @@ export default function App() {
       isVerifiedStudent: true,
     };
 
+    let studentGender = userOnboardingData.phoneNumber === studentPhoneNumber ? userOnboardingData.gender : undefined;
+    let studentLookingFor = userOnboardingData.phoneNumber === studentPhoneNumber ? userOnboardingData.lookingFor : undefined;
+
+    try {
+      const { data: pData } = await supabase.from('user_profiles').select('*').eq('phone_number', studentPhoneNumber).maybeSingle();
+      if (pData && pData.gender) {
+        studentGender = pData.gender;
+        studentLookingFor = pData.looking_for;
+      }
+    } catch (e) {}
+
     try {
       await supabase.from('approved_credentials').upsert([
         {
@@ -391,6 +478,8 @@ export default function App() {
         regNumber: regNo,
         email: validatedEmail,
         loginId: credential.loginId,
+        gender: studentGender,
+        lookingFor: studentLookingFor,
         isVerifiedStudent: true,
       });
     } catch (err) {

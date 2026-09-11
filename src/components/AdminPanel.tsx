@@ -145,6 +145,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       ], { onConflict: 'id' });
 
+      let existingProf: any = null;
+      try {
+        const { data: pData } = await supabase.from('user_profiles').select('*').eq('phone_number', phone).maybeSingle();
+        existingProf = pData;
+        if (!existingProf) {
+          const { data: rData } = await supabase.from('pending_registrations').select('*').eq('phone_number', phone).maybeSingle();
+          existingProf = rData;
+        }
+      } catch (e) {
+        console.warn("Fetch existing profile error:", e);
+      }
+
       await supabase.from('user_profiles').upsert([
         {
           full_name: studentName,
@@ -152,6 +164,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           email: email,
           reg_number: phone,
           login_id: finalLoginId,
+          gender: existingProf?.gender || 'female',
+          looking_for: existingProf?.looking_for || 'male',
+          avatar_url: existingProf?.avatar_url || existingProf?.avatarUrl || ASSETS.userAvatar,
+          major: existingProf?.major || '',
+          campus: existingProf?.campus || '',
+          bio: existingProf?.bio || '',
+          quote: existingProf?.quote || '',
+          interests: existingProf?.interests || [],
           verified: true,
           is_verified_student: true,
           updated_at: new Date().toISOString(),

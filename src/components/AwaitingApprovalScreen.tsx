@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ApprovedCredential } from '../types';
+import { supabase } from '../supabase';
+import { DEFAULT_MANIPAL_CREDENTIALS } from './StudentLoginModal';
 
 interface AwaitingApprovalScreenProps {
   studentName: string;
@@ -22,33 +24,169 @@ export const AwaitingApprovalScreen: React.FC<AwaitingApprovalScreenProps> = ({
   const [enteredPasscode, setEnteredPasscode] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showDirectLoginForm, setShowDirectLoginForm] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [dbCredentials, setDbCredentials] = useState<ApprovedCredential[]>([]);
 
-  // Check if current student's reg number or UTR matches an approved credential
-  const myCredential = approvedCredentials.find(
-    (c) =>
-      c.studentRegNo === regNumber ||
-      (transactionRef && c.utrRef === transactionRef) ||
-      c.studentName.toLowerCase() === studentName.toLowerCase()
-  );
+  // Fetch approved credentials from Supabase live DB and subscribe to changes
+  useEffect(() => {
+    const fetchLiveCredentials = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('approved_credentials')
+          .select('*');
 
-  const handleManualLogin = (e: React.FormEvent) => {
+        if (!error && data && data.length > 0) {
+          const mapped: ApprovedCredential[] = data.map((item: any) => ({
+            id: item.id || `cred-${Date.now()}`,
+            studentId: item.student_id || item.studentId || item.id,
+            studentName: item.student_name || item.studentName || 'Student',
+            studentEmail: item.student_email || item.studentEmail || '',
+            studentPhoneNumber: item.student_phone_number || item.studentPhoneNumber || '',
+            studentRegNo: item.student_reg_no || item.studentRegNo || item.student_phone_number || '',
+            loginId: item.login_id || item.loginId || '',
+            passcode: item.passcode || '',
+            status: item.status || 'Approved',
+            approvedAt: item.approved_at || item.approvedAt || 'Just now',
+            utrRef: item.utr_ref || item.utrRef || '',
+            isVerifiedStudent: true,
+          }));
+          setDbCredentials(mapped);
+        }
+      } catch (err) {
+        console.warn("AwaitingApprovalScreen fetch credentials warning:", err);
+      }
+    };
+
+    fetchLiveCredentials();
+
+    const channel = supabase
+      .channel('awaiting_approval_credentials')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_credentials' }, () => {
+        fetchLiveCredentials();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_registrations' }, () => {
+        fetchLiveCredentials();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Combine props, live DB credentials, and defaults
+  const allCredentials = [...DEFAULT_MANIPAL_CREDENTIALS, ...approvedCredentials, ...dbCredentials];
+
+  // Check if current student's reg number, phone, UTR, or name matches an approved credential
+  const myCredential = allCredentials.find((c) => {
+    const matchReg = regNumber && (c.studentRegNo === regNumber || c.studentPhoneNumber === regNumber);
+    const matchUtr = transactionRef && c.utrRef === transactionRef;
+    const matchName = studentName && c.studentName.trim().toLowerCase() === studentName.trim().toLowerCase();
+    return (matchReg || matchUtr || matchName) && c.status === 'Approved';
+  });
+
+  const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
+    setIsVerifying(true);
 
-    const found = approvedCredentials.find(
-      (c) =>
-        c.loginId.trim().toUpperCase() === enteredLoginId.trim().toUpperCase() &&
-        c.passcode.trim() === enteredPasscode.trim()
-    );
+    const cleanInput = enteredLoginId.trim().toLowerCase();
+    const cleanPass = enteredPasscode.trim();
 
-    if (found) {
-      if (found.status === 'Approved') {
-        onLoginSuccess(found);
-      } else {
-        setLoginError('This credential is still pending Registrar Admin approval.');
+    try {
+      // 1. Check in-memory credentials (defaults + props + live state)
+      let found = allCredentials.find((c) => {
+        const matchId = c.loginId.trim().toLowerCase() === cleanInput;
+        const matchName = c.studentName.trim().toLowerCase() === cleanInput;
+        const matchPhone = (c.studentPhoneNumber || '').trim() === cleanInput || (c.studentRegNo || '').trim() === cleanInput;
+        const matchEmail = (c.studentEmail || '').trim().toLowerCase() === cleanInput;
+        const matchPass = (c.passcode || '').trim() === cleanPass;
+
+        return (matchId || matchName || matchPhone || matchEmail) && matchPass;
+      });
+
+      // 2. Direct Supabase query to approved_credentials table
+      if (!found) {
+        const { data: dbCreds } = await supabase.from('approved_credentials').select('*');
+        if (dbCreds && dbCreds.length > 0) {
+          const item = dbCreds.find((c: any) => {
+            const loginId = (c.login_id || c.loginId || '').trim().toLowerCase();
+            const name = (c.student_name || c.studentName || '').trim().toLowerCase();
+            const phone = (c.student_phone_number || c.studentPhoneNumber || '').trim();
+            const email = (c.student_email || c.studentEmail || '').trim().toLowerCase();
+            const pass = (c.passcode || '').trim();
+
+            const isMatch = loginId === cleanInput || name === cleanInput || phone === cleanInput || email === cleanInput;
+            return isMatch && pass === cleanPass;
+          });
+
+          if (item) {
+            found = {
+              id: item.id || `cred-${Date.now()}`,
+              studentId: item.student_id || item.id,
+              studentName: item.student_name || 'Student',
+              studentEmail: item.student_email || '',
+              studentPhoneNumber: item.student_phone_number || '',
+              studentRegNo: item.student_reg_no || item.student_phone_number || '',
+              loginId: item.login_id || '',
+              passcode: item.passcode || '',
+              status: item.status || 'Approved',
+              approvedAt: item.approved_at || 'Just now',
+              utrRef: item.utr_ref || '',
+              isVerifiedStudent: true,
+            };
+          }
+        }
       }
-    } else {
-      setLoginError('Invalid Login ID or Passcode! Please check credentials provided by Admin.');
+
+      // 3. Direct Supabase query to pending_registrations table
+      if (!found) {
+        const { data: dbRegs } = await supabase.from('pending_registrations').select('*');
+        if (dbRegs && dbRegs.length > 0) {
+          const reg = dbRegs.find((r: any) => {
+            const loginId = (r.login_id || r.loginId || '').trim().toLowerCase();
+            const name = (r.student_name || r.studentName || '').trim().toLowerCase();
+            const phone = (r.phone_number || r.phoneNumber || '').trim();
+            const email = (r.email || '').trim().toLowerCase();
+            const pass = (r.passcode || '').trim();
+
+            const isMatch = loginId === cleanInput || name === cleanInput || phone === cleanInput || email === cleanInput;
+            return isMatch && pass === cleanPass;
+          });
+
+          if (reg) {
+            found = {
+              id: `cred-${reg.id}`,
+              studentId: reg.id,
+              studentName: reg.student_name || 'Student',
+              studentEmail: reg.email || '',
+              studentPhoneNumber: reg.phone_number || '',
+              studentRegNo: reg.phone_number || '',
+              loginId: reg.login_id || '',
+              passcode: reg.passcode || '',
+              status: reg.status === 'approved' ? 'Approved' : 'Pending',
+              approvedAt: 'Just now',
+              utrRef: reg.transaction_ref || '',
+              isVerifiedStudent: true,
+            };
+          }
+        }
+      }
+
+      if (found) {
+        if (found.status === 'Approved' || (found.status as string) === 'approved') {
+          onLoginSuccess(found);
+        } else {
+          setLoginError('This credential is still pending Registrar Admin approval.');
+        }
+      } else {
+        setLoginError('Invalid Login ID, Name, or Passcode! Please check credentials provided by Admin.');
+      }
+    } catch (err) {
+      console.warn("handleManualLogin error:", err);
+      setLoginError('Error verifying credentials. Please try again.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -206,9 +344,10 @@ export const AwaitingApprovalScreen: React.FC<AwaitingApprovalScreenProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white font-bold text-xs uppercase tracking-wider shadow-lg hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                disabled={isVerifying}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF4B5C] to-[#6C4AB6] text-white font-bold text-xs uppercase tracking-wider shadow-lg hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                VERIFY & LOG IN
+                <span>{isVerifying ? 'VERIFYING...' : 'VERIFY & LOG IN'}</span>
               </button>
             </form>
           )}

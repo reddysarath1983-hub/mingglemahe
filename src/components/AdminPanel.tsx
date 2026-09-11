@@ -123,18 +123,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }).eq('id', id);
 
       const act = activities.find(a => a.id === id);
-      if (act) {
-        await supabase.from('approved_credentials').insert([
-          {
-            student_name: act.userName,
-            student_phone_number: act.paymentDetails?.studentPhoneNumber || '',
-            student_email: act.paymentDetails?.studentEmail || '',
-            login_id: finalLoginId,
-            passcode: finalPasscode,
-            status: 'Approved'
-          }
-        ]);
-      }
+      const studentName = act?.userName || 'Student';
+      const phone = act?.paymentDetails?.studentPhoneNumber || '';
+      const email = act?.paymentDetails?.studentEmail || `${studentName.toLowerCase().replace(/\s+/g, '.')}@learner.manipal.edu`;
+      const credId = `cred-${id}`;
+
+      await supabase.from('approved_credentials').upsert([
+        {
+          id: credId,
+          student_id: id,
+          student_name: studentName,
+          student_phone_number: phone,
+          student_email: email,
+          student_reg_no: phone,
+          login_id: finalLoginId,
+          passcode: finalPasscode,
+          status: 'Approved',
+          approved_at: new Date().toISOString(),
+          utr_ref: act?.paymentDetails?.transactionRef || 'UTR-VERIFIED',
+          is_verified_student: true,
+        }
+      ], { onConflict: 'id' });
+
+      await supabase.from('user_profiles').upsert([
+        {
+          full_name: studentName,
+          phone_number: phone,
+          email: email,
+          reg_number: phone,
+          login_id: finalLoginId,
+          verified: true,
+          is_verified_student: true,
+          updated_at: new Date().toISOString(),
+        }
+      ], { onConflict: 'phone_number' });
+
+      setActivities((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: 'Completed',
+                assignedCredential: { loginId: finalLoginId, passcode: finalPasscode },
+              }
+            : item
+        )
+      );
     } catch (err) {
       console.warn("Supabase update error:", err);
     }

@@ -143,6 +143,13 @@ export default function App() {
 
             let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
 
+            let avatar = item.avatar_url;
+            if (!avatar || avatar.startsWith('blob:')) {
+              avatar = g === 'female'
+                ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80'
+                : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80';
+            }
+
             dbProfilesMap.set(phone, {
               id: phone,
               name: item.full_name || 'Manipal Student',
@@ -156,8 +163,8 @@ export default function App() {
               bio: item.bio || 'Manipal student exploring campus life.',
               interests: item.interests || ['Coffee', 'Music'],
               verified: item.is_verified_student ?? true,
-              avatarUrl: item.avatar_url || ASSETS.userAvatar,
-              photos: [item.avatar_url || ASSETS.userAvatar],
+              avatarUrl: avatar,
+              photos: [avatar],
               phoneNumber: item.phone_number,
               email: item.email,
             });
@@ -179,6 +186,13 @@ export default function App() {
 
               let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
 
+              let avatar = item.avatar_url;
+              if (!avatar || avatar.startsWith('blob:')) {
+                avatar = g === 'female'
+                  ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80'
+                  : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80';
+              }
+
               dbProfilesMap.set(phone, {
                 id: phone,
                 name: item.student_name || 'Manipal Student',
@@ -192,8 +206,8 @@ export default function App() {
                 bio: 'Manipal student looking for good company.',
                 interests: ['Coffee', 'Music'],
                 verified: true,
-                avatarUrl: item.avatar_url || ASSETS.userAvatar,
-                photos: [item.avatar_url || ASSETS.userAvatar],
+                avatarUrl: avatar,
+                photos: [avatar],
                 phoneNumber: item.phone_number,
                 email: item.email,
               });

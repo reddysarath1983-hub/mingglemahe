@@ -9,47 +9,7 @@ interface StudentLoginModalProps {
   onNavigateToOnboarding: () => void;
 }
 
-// Default pre-approved logins with full profile preferences
-export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [
-  {
-    id: 'default-1',
-    studentId: 'std-8812',
-    studentName: 'Anya Sharma',
-    studentEmail: 'anya.sharma@manipal.edu',
-    studentPhoneNumber: '220911048',
-    loginId: 'MPL-2026-8812',
-    passcode: 'Manipal#2026',
-    status: 'Approved',
-    approvedAt: 'Official Default',
-    utrRef: 'UTR-DEFAULT-8812',
-    gender: 'female',
-    lookingFor: 'male',
-    major: 'B.A Media & Communication',
-    campus: 'SOC Manipal',
-    bio: 'Film student, portrait photographer, and sunset seeker at End Point. Looking for music lovers and coffee date companions!',
-    quote: 'Capturing candid Manipal moments 📸',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    id: 'default-2',
-    studentId: 'std-9923',
-    studentName: 'Kabir Mehta',
-    studentEmail: 'kabir.mehta@manipal.edu',
-    studentPhoneNumber: '220911099',
-    loginId: 'MPL-2026-9923',
-    passcode: 'Campus#3000',
-    status: 'Approved',
-    approvedAt: 'Official Default',
-    utrRef: 'UTR-DEFAULT-9923',
-    gender: 'male',
-    lookingFor: 'female',
-    major: 'B.Tech Computer Science',
-    campus: 'MIT Manipal',
-    bio: 'Tech builder, guitarist, and weekend road tripper. Looking for a genuine co-pilot for Malpe beach sunsets!',
-    quote: 'Coding by day, acoustic jams by night 🎸',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
-  },
-];
+export const DEFAULT_MANIPAL_CREDENTIALS: ApprovedCredential[] = [];
 
 export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
   onClose,
@@ -197,21 +157,15 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
         }
       } else {
         setErrorMsg(
-          'Invalid Login ID, Name, or Passcode! Please check credentials issued by Admin or select from active logins below.'
+          'Invalid Login ID, Name, or Passcode! Please check the credentials issued by Admin.'
         );
       }
     } catch (err) {
       console.warn("Login submit warning:", err);
-      setErrorMsg('Invalid Credentials! Please try again or check active logins.');
+      setErrorMsg('Invalid Credentials! Please check your Login ID and Passcode.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const fillQuickPreset = (cred: ApprovedCredential) => {
-    setLoginInput(cred.loginId);
-    setPasscode(cred.passcode);
-    setErrorMsg(null);
   };
 
   return (
@@ -261,7 +215,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <input
               type="text"
               required
-              placeholder="e.g., MPL-2026-8812, Sarath Reddy, or Anya Sharma"
+              placeholder="e.g., MPL-2026-XXXX or your Phone / Name"
               value={loginInput}
               onChange={(e) => setLoginInput(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-white placeholder-[#aa8988] focus:border-[#FF4B5C] focus:outline-none transition-colors"
@@ -275,7 +229,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <input
               type="password"
               required
-              placeholder="Enter passcode (e.g. Manipal#2026 or Campus#3000)"
+              placeholder="Enter your passcode"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-white placeholder-[#aa8988] focus:border-[#FF4B5C] focus:outline-none transition-colors font-mono"
@@ -291,35 +245,6 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({
             <span>{isSubmitting ? 'VERIFYING...' : 'LOG IN TO PORTAL'}</span>
           </button>
         </form>
-
-        {/* ACTIVE LOGINS QUICK SELECT BOX */}
-        <div className="pt-2 border-t border-white/10 space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-bold text-[#e3bebd] uppercase tracking-wider">
-            <span>{uniqueCredentials.length} ACTIVE MANIPAL LOGINS</span>
-            <span className="text-[#5edda8]">PRE-APPROVED</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-left max-h-36 overflow-y-auto pr-1">
-            {uniqueCredentials.map((cred) => (
-              <button
-                key={cred.id}
-                type="button"
-                onClick={() => fillQuickPreset(cred)}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 hover:border-[#FF4B5C]/50 transition-all cursor-pointer text-xs space-y-0.5 group"
-              >
-                <div className="font-bold text-white group-hover:text-[#ffb3b3] truncate">
-                  {cred.studentName}
-                </div>
-                <div className="text-[10px] text-[#5edda8] font-mono truncate">
-                  {cred.loginId}
-                </div>
-                <div className="text-[9px] text-[#e3bebd] font-mono opacity-80">
-                  Pass: {cred.passcode}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Bottom info */}
         <p className="text-[10px] text-center text-[#e3bebd]/80">

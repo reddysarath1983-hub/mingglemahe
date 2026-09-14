@@ -18,6 +18,14 @@ export interface PendingRegistration {
   loginId?: string;
   passcode?: string;
   createdAt?: string;
+  gender?: string;
+  lookingFor?: string;
+  major?: string;
+  campus?: string;
+  bio?: string;
+  quote?: string;
+  avatarUrl?: string;
+  interests?: string[];
 }
 
 export interface ApprovedCredentialRecord {
@@ -33,4 +41,12 @@ export interface ApprovedCredentialRecord {
   approvedAt?: string;
   utrRef?: string;
   isVerifiedStudent?: boolean;
+  gender?: string;
+  lookingFor?: string;
+  major?: string;
+  campus?: string;
+  bio?: string;
+  quote?: string;
+  avatarUrl?: string;
 }
+

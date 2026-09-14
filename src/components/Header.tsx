@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenAdmin: () => void;
   onOpenPreviews?: () => void;
   onOpenStudentLogin?: () => void;
+  onLogout?: () => void;
   userAvatarUrl?: string;
 }
 
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdmin,
   onOpenPreviews,
   onOpenStudentLogin,
+  onLogout,
   userAvatarUrl,
 }) => {
   // Hide top header on splash / verify screens
@@ -79,16 +81,29 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="text-[10px] sm:text-xs">{hasCampusPass ? 'PASS ACTIVE' : 'PASS'}</span>
         </button>
 
-        {/* Student Login Button */}
-        {onOpenStudentLogin && (
-          <button
-            onClick={onOpenStudentLogin}
-            title="Student Login"
-            className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs text-white font-bold transition-all cursor-pointer flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm text-[#5edda8]">key</span>
-            <span className="hidden sm:inline">LOGIN</span>
-          </button>
+        {/* Student Login or Logout Button */}
+        {hasCampusPass ? (
+          onLogout && (
+            <button
+              onClick={onLogout}
+              title="Logout Account"
+              className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-[#FF4B5C]/20 border border-white/20 hover:border-[#FF4B5C]/50 text-xs text-white font-bold transition-all cursor-pointer flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm text-[#FF4B5C]">logout</span>
+              <span className="hidden sm:inline">LOGOUT</span>
+            </button>
+          )
+        ) : (
+          onOpenStudentLogin && (
+            <button
+              onClick={onOpenStudentLogin}
+              title="Student Login"
+              className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs text-white font-bold transition-all cursor-pointer flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm text-[#5edda8]">key</span>
+              <span className="hidden sm:inline">LOGIN</span>
+            </button>
+          )
         )}
 
         {/* Admin Dashboard Switch - Only visible when in admin view or discreetly */}

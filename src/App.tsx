@@ -50,7 +50,7 @@ export default function App() {
   const [showStudentLoginModal, setShowStudentLoginModal] = useState(false);
   const [modalTermsType, setModalTermsType] = useState<'terms' | 'guidelines' | null>(null);
 
-  // Student Onboarding details state
+  // Student Onboarding details state with LocalStorage persistence
   const [userOnboardingData, setUserOnboardingData] = useState<{
     fullName: string;
     phoneNumber: string;
@@ -65,21 +65,36 @@ export default function App() {
     avatarUrl: string;
     gender?: 'male' | 'female' | 'other';
     lookingFor?: 'female' | 'male' | 'everyone';
-  }>({
-    fullName: 'Sarath Reddy',
-    phoneNumber: '7676878700',
-    regNumber: '7676878700',
-    email: 'sarath.reddy@learner.manipal.edu',
-    major: 'B.Tech Computer Science',
-    year: '3rd Year',
-    campus: 'MIT Manipal',
-    bio: 'Tech enthusiast, late night coder & End Point sunset lover.',
-    quote: 'Always looking for good coffee at Astra.',
-    interests: ['Coffee', 'Music', 'Coding'],
-    avatarUrl: ASSETS.userAvatar,
-    gender: 'male',
-    lookingFor: 'female',
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('mingle_user_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.fullName) return parsed;
+      }
+    } catch (e) {}
+    return {
+      fullName: 'Sarath Reddy',
+      phoneNumber: '7676878700',
+      regNumber: '7676878700',
+      email: 'sarath.reddy@learner.manipal.edu',
+      major: 'B.Tech Computer Science',
+      year: '3rd Year',
+      campus: 'MIT Manipal',
+      bio: 'Tech enthusiast, late night coder & End Point sunset lover.',
+      quote: 'Always looking for good coffee at Astra.',
+      interests: ['Coffee', 'Music', 'Coding'],
+      avatarUrl: ASSETS.userAvatar,
+      gender: 'male',
+      lookingFor: 'female',
+    };
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mingle_user_data', JSON.stringify(userOnboardingData));
+    } catch (e) {}
+  }, [userOnboardingData]);
 
   const [adminStats, setAdminStats] = useState<AdminStats>(INITIAL_ADMIN_STATS);
   const [adminActivities, setAdminActivities] = useState<AdminActivity[]>(INITIAL_ADMIN_ACTIVITIES);
@@ -121,6 +136,47 @@ export default function App() {
       }
     };
 
+    const parseGenderAndLookingFor = (item: any): { gender: 'male' | 'female'; lookingFor: 'female' | 'male' | 'everyone' } => {
+      let g: string | undefined = item.gender?.toString()?.toLowerCase();
+      let lf: string | undefined = item.looking_for?.toString()?.toLowerCase();
+
+      if (Array.isArray(item.interests)) {
+        item.interests.forEach((inst: any) => {
+          if (typeof inst === 'string') {
+            if (inst.startsWith('[GENDER:')) {
+              const val = inst.replace('[GENDER:', '').replace(']', '').trim().toLowerCase();
+              if (val === 'male' || val === 'female') g = val;
+            }
+            if (inst.startsWith('[LOOKING_FOR:')) {
+              const val = inst.replace('[LOOKING_FOR:', '').replace(']', '').trim().toLowerCase();
+              if (val === 'male' || val === 'female' || val === 'everyone') lf = val;
+            }
+          }
+        });
+      }
+
+      if (!g && typeof item.quote === 'string') {
+        if (item.quote.includes('[GENDER:male]')) g = 'male';
+        else if (item.quote.includes('[GENDER:female]')) g = 'female';
+      }
+
+      if (!g || (g !== 'male' && g !== 'female')) {
+        const lowerName = (item.full_name || item.student_name || '').toLowerCase();
+        const maleNames = ['rohan', 'kabir', 'aarav', 'siddharth', 'devansh', 'sarath', 'rahul', 'aditya', 'vikram', 'vivan', 'yash', 'arjun', 'karan', 'aman', 'sahil'];
+        if (maleNames.some(mn => lowerName.includes(mn))) {
+          g = 'male';
+        } else {
+          g = 'female';
+        }
+      }
+
+      if (!lf || (lf !== 'male' && lf !== 'female' && lf !== 'everyone')) {
+        lf = g === 'female' ? 'male' : 'female';
+      }
+
+      return { gender: g as any, lookingFor: lf as any };
+    };
+
     const fetchUserProfiles = async () => {
       try {
         const { data: profData } = await supabase.from('user_profiles').select('*');
@@ -133,15 +189,7 @@ export default function App() {
             const phone = item.phone_number || item.reg_number || item.id;
             if (!phone) return;
 
-            let g = 'female';
-            if (item.gender) {
-              g = item.gender.toString().toLowerCase();
-            } else if (item.looking_for) {
-              g = item.looking_for.toString().toLowerCase() === 'male' ? 'female' : 'male';
-            }
-            if (g !== 'female' && g !== 'male') g = 'female';
-
-            let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
+            const { gender: g, lookingFor: lf } = parseGenderAndLookingFor(item);
 
             let avatar = item.avatar_url;
             if (!avatar || avatar.startsWith('blob:')) {
@@ -150,18 +198,22 @@ export default function App() {
                 : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80';
             }
 
+            const cleanInterests = (item.interests || ['Coffee', 'Music']).filter(
+              (i: any) => typeof i === 'string' && !i.startsWith('[GENDER:') && !i.startsWith('[LOOKING_FOR:')
+            );
+
             dbProfilesMap.set(phone, {
               id: phone,
               name: item.full_name || 'Manipal Student',
               age: item.age || 21,
-              gender: g as any,
-              lookingFor: lf as any,
+              gender: g,
+              lookingFor: lf,
               major: item.major || 'Degree',
               year: item.year || '3rd Year',
               campus: item.campus || 'MIT Manipal',
-              quote: item.quote || 'Looking for great coffee and friends!',
+              quote: (item.quote || 'Looking for great coffee and friends!').replace(/\[GENDER:\w+\]/g, '').trim(),
               bio: item.bio || 'Manipal student exploring campus life.',
-              interests: item.interests || ['Coffee', 'Music'],
+              interests: cleanInterests.length > 0 ? cleanInterests : ['Coffee', 'Music'],
               verified: item.is_verified_student ?? true,
               avatarUrl: avatar,
               photos: [avatar],
@@ -176,15 +228,7 @@ export default function App() {
             const phone = item.phone_number || item.id;
             if (!phone) return;
             if (!dbProfilesMap.has(phone)) {
-              let g = 'female';
-              if (item.gender) {
-                g = item.gender.toString().toLowerCase();
-              } else if (item.looking_for) {
-                g = item.looking_for.toString().toLowerCase() === 'male' ? 'female' : 'male';
-              }
-              if (g !== 'female' && g !== 'male') g = 'female';
-
-              let lf = item.looking_for ? item.looking_for.toString().toLowerCase() : (g === 'female' ? 'male' : 'female');
+              const { gender: g, lookingFor: lf } = parseGenderAndLookingFor(item);
 
               let avatar = item.avatar_url;
               if (!avatar || avatar.startsWith('blob:')) {
@@ -193,18 +237,22 @@ export default function App() {
                   : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80';
               }
 
+              const cleanInterests = (item.interests || ['Coffee', 'Music']).filter(
+                (i: any) => typeof i === 'string' && !i.startsWith('[GENDER:') && !i.startsWith('[LOOKING_FOR:')
+              );
+
               dbProfilesMap.set(phone, {
                 id: phone,
                 name: item.student_name || 'Manipal Student',
                 age: 21,
-                gender: g as any,
-                lookingFor: lf as any,
+                gender: g,
+                lookingFor: lf,
                 major: item.major || 'Degree',
                 year: '2nd Year',
-                campus: 'MIT Manipal',
-                quote: 'Looking for coffee and genuine connections!',
-                bio: 'Manipal student looking for good company.',
-                interests: ['Coffee', 'Music'],
+                campus: item.campus || 'MIT Manipal',
+                quote: (item.quote || 'Looking for coffee and genuine connections!').replace(/\[GENDER:\w+\]/g, '').trim(),
+                bio: item.bio || 'Manipal student looking for good company.',
+                interests: cleanInterests.length > 0 ? cleanInterests : ['Coffee', 'Music'],
                 verified: true,
                 avatarUrl: avatar,
                 photos: [avatar],
@@ -229,6 +277,12 @@ export default function App() {
     fetchApprovedCredentials();
     fetchUserProfiles();
 
+    // 5-second polling interval for robust sync across clients
+    const pollInterval = setInterval(() => {
+      fetchApprovedCredentials();
+      fetchUserProfiles();
+    }, 5000);
+
     const channel = supabase
       .channel('approved_credentials_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'approved_credentials' }, () => {
@@ -243,6 +297,7 @@ export default function App() {
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -273,18 +328,27 @@ export default function App() {
         try {
           const { data: existing } = await supabase
             .from('user_profiles')
-            .select('gender, looking_for')
+            .select('gender, looking_for, interests')
             .eq('phone_number', details.phoneNumber)
             .maybeSingle();
 
-          if (existing && existing.gender) {
-            resolvedGender = existing.gender;
-            resolvedLookingFor = existing.looking_for;
+          if (existing) {
+            if (existing.gender) resolvedGender = existing.gender;
+            if (existing.looking_for) resolvedLookingFor = existing.looking_for;
           }
         } catch (e) {
           console.warn("Fetch existing gender error:", e);
         }
       }
+
+      const genderTag = `[GENDER:${resolvedGender || 'female'}]`;
+      const lookingForTag = `[LOOKING_FOR:${resolvedLookingFor || 'male'}]`;
+
+      const userInterests = Array.isArray(details.interests) ? details.interests : ['Coffee', 'Music'];
+      const cleanedInterests = userInterests.filter(
+        i => typeof i === 'string' && !i.startsWith('[GENDER:') && !i.startsWith('[LOOKING_FOR:')
+      );
+      const safeInterests = [genderTag, lookingForTag, ...cleanedInterests];
 
       const payloadFull: any = {
         full_name: details.fullName,
@@ -296,7 +360,7 @@ export default function App() {
         campus: details.campus || '',
         bio: details.bio || '',
         quote: details.quote || '',
-        interests: details.interests || [],
+        interests: safeInterests,
         avatar_url: details.avatarUrl || '',
         gender: resolvedGender || 'female',
         looking_for: resolvedLookingFor || 'male',
@@ -601,6 +665,29 @@ export default function App() {
     });
   };
 
+  const handleLogout = () => {
+    setHasCampusPass(false);
+    try {
+      localStorage.removeItem('mingle_user_data');
+    } catch (e) {}
+    setUserOnboardingData({
+      fullName: 'Sarath Reddy',
+      phoneNumber: '7676878700',
+      regNumber: '7676878700',
+      email: 'sarath.reddy@learner.manipal.edu',
+      major: 'B.Tech Computer Science',
+      year: '3rd Year',
+      campus: 'MIT Manipal',
+      bio: 'Tech enthusiast, late night coder & End Point sunset lover.',
+      quote: 'Always looking for good coffee at Astra.',
+      interests: ['Coffee', 'Music', 'Coding'],
+      avatarUrl: ASSETS.userAvatar,
+      gender: 'male',
+      lookingFor: 'female',
+    });
+    setCurrentView('splash');
+  };
+
   const displayedProfiles = profiles.filter((p) => {
     // Exclude current logged in user
     const isSelf =
@@ -663,6 +750,7 @@ export default function App() {
         onOpenAdmin={() => setShowAdminPasscodeModal(true)}
         onOpenPreviews={() => setShowPreviewsModal(true)}
         onOpenStudentLogin={() => setShowStudentLoginModal(true)}
+        onLogout={handleLogout}
         userAvatarUrl={userOnboardingData.avatarUrl}
       />
 
@@ -698,6 +786,14 @@ export default function App() {
           studentName={userOnboardingData.fullName}
           phoneNumber={userOnboardingData.phoneNumber}
           email={userOnboardingData.email}
+          gender={userOnboardingData.gender}
+          lookingFor={userOnboardingData.lookingFor}
+          major={userOnboardingData.major}
+          campus={userOnboardingData.campus}
+          bio={userOnboardingData.bio}
+          quote={userOnboardingData.quote}
+          avatarUrl={userOnboardingData.avatarUrl}
+          interests={userOnboardingData.interests}
           onCompletePayment={handlePaymentSubmit}
           onBackToDetails={() => setCurrentView('onboarding-details')}
         />
@@ -813,6 +909,7 @@ export default function App() {
           onOpenCampusPass={() => setShowCampusPassModal(true)}
           hasCampusPass={hasCampusPass}
           onOpenAdmin={() => setShowAdminPasscodeModal(true)}
+          onLogout={handleLogout}
         />
       )}
 

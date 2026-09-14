@@ -54,9 +54,17 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure columns exist if user_profiles table was created earlier
+-- Ensure columns exist if tables were created earlier
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'male';
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS looking_for TEXT DEFAULT 'female';
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'male';
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS looking_for TEXT DEFAULT 'female';
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS major TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS campus TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS quote TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS interests TEXT[];
 
 -- 4. Chats Table
 CREATE TABLE IF NOT EXISTS public.chats (
@@ -105,5 +113,7 @@ CREATE POLICY "Allow public update" ON public.chats FOR UPDATE USING (true);
 CREATE POLICY "Allow public select" ON public.chat_messages FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON public.chat_messages FOR INSERT WITH CHECK (true);
 
--- Enable Realtime for live chat & admin panel
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pending_registrations, public.approved_credentials, public.chats, public.chat_messages;
+-- Enable Realtime for live chat, user profiles & admin panel
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_profiles, public.pending_registrations, public.approved_credentials, public.chats, public.chat_messages;
+
+

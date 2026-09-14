@@ -5,6 +5,14 @@ interface PaymentStepScreenProps {
   studentName: string;
   phoneNumber: string;
   email: string;
+  gender?: string;
+  lookingFor?: string;
+  major?: string;
+  campus?: string;
+  bio?: string;
+  quote?: string;
+  avatarUrl?: string;
+  interests?: string[];
   onCompletePayment: (paymentData: {
     upiNumber: string;
     transactionRef: string;
@@ -18,6 +26,14 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
   studentName,
   phoneNumber,
   email,
+  gender,
+  lookingFor,
+  major,
+  campus,
+  bio,
+  quote,
+  avatarUrl,
+  interests,
   onCompletePayment,
   onBackToDetails,
 }) => {
@@ -92,18 +108,30 @@ export const PaymentStepScreen: React.FC<PaymentStepScreenProps> = ({
 
       // Persist registration request to Supabase pending_registrations table
       try {
-        await supabase.from('pending_registrations').insert([
-          {
-            student_name: studentName,
-            phone_number: phoneNumber,
-            email: email,
-            transaction_ref: transactionRef,
-            amount: '₹6.69',
-            screenshot_url: downloadUrl,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        const payload: any = {
+          student_name: studentName,
+          phone_number: phoneNumber,
+          email: email,
+          transaction_ref: transactionRef,
+          amount: '₹6.69',
+          screenshot_url: downloadUrl,
+          status: 'pending',
+          gender: gender || 'female',
+          looking_for: lookingFor || 'male',
+          major: major || '',
+          campus: campus || '',
+          bio: bio || '',
+          quote: quote || '',
+          avatar_url: avatarUrl || '',
+          interests: interests || [],
+          created_at: new Date().toISOString(),
+        };
+
+        const { error: insErr } = await supabase.from('pending_registrations').insert([payload]);
+        if (insErr) {
+          const { gender: g, looking_for: lf, major: m, campus: c, bio: b, quote: q, avatar_url: a, interests: i, ...safePayload } = payload;
+          await supabase.from('pending_registrations').insert([safePayload]);
+        }
       } catch (dbErr) {
         console.warn("Supabase pending_registrations insert warning:", dbErr);
       }
